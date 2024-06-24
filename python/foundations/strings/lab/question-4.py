@@ -1,12 +1,13 @@
-def plus_10(n):
-  """
-  Return n + 10
-  
-  Examples:
-  >>> plus_10(12)
-  22
-  >>> n = plus_10(3)
-  >>> n 
-  13
-  """
+def rect(width, length):
+	"""
+	Create a rectangle made of "#" with the dimensions width by length.
+	
+	>>> rect(4, 1)
+	####
+
+	>>> rec(6, 3)
+	######
+	######
+	######
+	"""
   pass
