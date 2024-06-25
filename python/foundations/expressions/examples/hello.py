@@ -1,1 +1,5 @@
 print('hello, world')
+print("It's")
+print('I like Robotics')
+print('sljfbfsdf')
+print('12334 &^*^##')
