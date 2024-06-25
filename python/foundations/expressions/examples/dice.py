@@ -12,7 +12,8 @@ def roll_dice():
     return die_1 + die_2
 
 def main():
-    print(roll_dice())
+    score = roll_dice()
+    print(score)
 
 if __name__ == '__main__':
     main()
