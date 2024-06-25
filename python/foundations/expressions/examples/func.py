@@ -16,7 +16,7 @@ def percent_difference(x, y):
     """
     Compute the percent difference between x and y.
     """
-    difference = subtract(x, y)
+    difference = subtract(y, x)
     percent = difference / x * 100
     return percent
 
@@ -25,7 +25,7 @@ def main():
     print()
     print(12, 'squared is', square(12))
     print('5 - 4 is', subtract(5, 4))
-    print('50 is', percent_difference(50, 40), '% greater than 40')
+    print('50 is ', percent_difference(40, 50), '% greater than 40', sep='')
     print()
 
 if __name__ == '__main__':
