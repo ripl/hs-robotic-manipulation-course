@@ -14,4 +14,12 @@ def rect(width, length):
 	######
 	######
 	"""
+
+	blocks = '#' * width
+
+	for _ in range(length):
+
+		print(blocks)
+
+
 	

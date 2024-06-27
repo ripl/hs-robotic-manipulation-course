@@ -10,4 +10,10 @@ def falling(n, k):
     >>> falling(4, 0)
     1
     """
-    pass
+    product = 1
+
+    for _ in range(k):
+        product *= n
+        n -= 1
+
+    return product
