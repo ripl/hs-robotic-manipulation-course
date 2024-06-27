@@ -1,3 +1,5 @@
+from math import pi
+
 def sphere(radius):
 	"""
 	Compute and print the volume, surface area and circumfrence of a sphere 
@@ -13,4 +15,6 @@ def sphere(radius):
   	Surface Area = 452.389
   	Circumference = 37.6991
 	"""
-	pass
+	print('Volume:', V)
+	print('Surface Area:', S)
+	print('Circumfrence:', C)

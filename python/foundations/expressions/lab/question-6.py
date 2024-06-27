@@ -9,4 +9,5 @@ def repeat_3(s):
     >>> repeat_3(10)
     101010
     """
-    pass
+    print(s,s,s,sep='')
+
