@@ -1,0 +1,10 @@
+marianos:eggs,1
+costco:croissant,12
+marianos:coconut milk,3
+target:sugar cookies,1
+marianos:flour,1
+marianos:eggs,2
+trader joes:pineapple,4
+trader joes:grapes,1
+costco:coffee,2
+trader joes:kale,1
