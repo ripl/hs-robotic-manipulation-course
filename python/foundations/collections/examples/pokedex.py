@@ -37,3 +37,24 @@ def filter_by_rarity(cards, rarity):
   """
   pass
 
+def sort_cards_by_rank(cards):
+    """
+    Sort the cards based on rarity using the rank dictionary provied. 
+    The output should be a a lists of lists where each sublist is [key, value]
+    pair.
+    
+    HINT: We can sort sequences by a key using the sorted function.
+        - https://www.w3schools.com/python/ref_func_sorted.asp
+    
+    Examples:
+    >>> sort_cards_by_rank(cards)
+    [['Mewtwo', 'Legendary'], ['Charizard', 'Rare'], ['Blastoise', 'Rare'], ['Dragonite', 'Rare'], ['Jigglypuff', 'Uncommon'], ['Pikachu', 'Common'], ['Snorlax', 'Common']]
+
+    """
+    rank = {
+        'Common': 1, 'Uncommon': 2, 
+        'Rare': 3, 'Legendary': 4
+    }
+    pass
+
+
