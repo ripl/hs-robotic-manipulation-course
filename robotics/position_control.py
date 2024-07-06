@@ -22,10 +22,11 @@ def initialize_robot(arm_config):
 def change_servo_angle(arm, servo_id, delta):
     pos = arm.read_position()
     pos = [int(p) for p in pos]
-    pos[servo_id - 1] += delta
+    servo_id_index = arm.servo_ids.index(servo_id)
+    pos[servo_id_index] += delta
     arm.set_and_wait_goal_pos(pos, servo_id=servo_id)
     # Print the current position of the servo after the move
-    time.sleep(0.1)
+    time.sleep(0.25)
     cur_pos = arm.read_position()
     positions_in_degrees = np.round(np.array(cur_pos) / CONVERSION_FACTOR, 2)
     df = pd.DataFrame({
