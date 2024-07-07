@@ -52,12 +52,14 @@ Pygame also allows you to render text on the screen using fonts.
 
 Here's how you can do it:
 
+```python
 # Define a font
 font = pygame.font.Font(None, 74)  # None for default font, 74 is the size
 
 # Render the text
 text = font.render('Hello, Pygame!', True, (255, 255, 255))
 screen.blit(text, (300, 300))
+```
 
 ### Creative Task
 
