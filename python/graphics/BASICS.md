@@ -56,6 +56,9 @@ Here's how you can do it:
 # Define a font
 font = pygame.font.Font(None, 74)  # None for default font, 74 is the size
 
+# Get the list of available system fonts
+available_fonts = pygame.font.get_fonts()
+
 # Render the text
 text = font.render('Hello, Pygame!', True, (255, 255, 255))
 screen.blit(text, (300, 300))
