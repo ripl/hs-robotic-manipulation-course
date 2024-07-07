@@ -1,8 +1,12 @@
 # Pygame Basics
 
-Pygame is a set of Python modules designed for writing video games. It provides functionalities like creating graphics, handling input, and playing sounds, 
-making it an excellent choice for beginners to learn game development and graphical programming. Pygame is built on top of the Simple DirectMedia Layer (SDL) library, 
-which is a low-level media library written in C.
+Pygame is a set of Python modules designed for writing video games. It provides functionalities like creating graphics, handling input, and playing sounds, making it an excellent choice for beginners to learn game development and graphical programming. Pygame is built on top of the Simple DirectMedia Layer (SDL) library, which is a low-level media library written in C.
+
+To install pygame onto your machine, run this command at the terminal:
+
+```bash
+pip install pygame --break-system-packages
+```
 
 ## Colors
 
@@ -68,6 +72,8 @@ screen.blit(text, (300, 300))
 
 For the closing activity, use what you've learned to draw an image of your choice. This could be a simple house, a car, a tree, 
 or any other recognizable object. Avoid abstract art and focus on creating a clear and identifiable image. 
+
+Create a new file called `creative.py` and paste of copy of the template provided to you. Render your image in this file.
 
 Here's an example of how to draw a simple house:
 
