@@ -14,10 +14,10 @@ echo 'export PYTHONPATH="$PYTHONPATH:/absolute/path/to/hs-robotic-manipulation-c
 # Activate the virtual environment
 source env/bin/activate
 
-# Install the dependencies
+# Install the dependencies (you only need to run this command once)
 pip install -r requirements.txt
 
-# To deactivate the virtual environment
+# To deactivate the virtual environment (only when you are within the virtual environment)
 deactivate
 ```
 
