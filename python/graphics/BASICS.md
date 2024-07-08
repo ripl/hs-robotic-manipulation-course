@@ -60,6 +60,8 @@ Here's a breakdown:
 - The **x-axis** increases as you move to the **right**.
 - The **y-axis** increases as you move **downwards**.
 
+![Coordinate System](https://media.geeksforgeeks.org/wp-content/uploads/20211110191326/pygamecoordinate.png)
+
 ## Colors
 
 In Pygame, colors are defined using RGB (Red, Green, Blue) values. Each component (red, green, and blue) can have a value from 0 to 255, where 0 means no color and 255 
