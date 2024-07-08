@@ -24,7 +24,7 @@ deactivate
 
 Pygame operates by continuously updating the game's `state` within a loop, monitoring various `events`. When events such as updating a variable or pressing keys on the keyboard occur, these actions trigger specific responses. The game is then `drawn` (re-rendered) on the screen to reflect the new state.
 
-![Game Loop](https://eng.libretexts.org/@api/deki/files/12879/GWPFigure5.png?revision=1 )
+![Game Loop](https://eng.libretexts.org/@api/deki/files/12879/GWPFigure5.png?revision=1)
 
 The code segment that acts as the game loop is:
 
