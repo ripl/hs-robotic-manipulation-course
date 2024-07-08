@@ -35,6 +35,72 @@ def change_servo_angle(arm, servo_id, delta):
     })
     print('\n', df.to_string(index=False), '\n')
 
+import os
+import json
+
+def record_action(arm, action, pose_type):
+    """
+    Updates an existing action or creates a new action with specified pose type for the arm.
+
+    This function either updates an existing action or creates a new one if it doesn't exist, and 
+    then adds or updates one of the four pose types for that action.
+
+    The four pose types are:
+    - 'hover': The arm placement before attempting to grasp an object.
+    - 'pre-grasp': The arm moves into a grasping position.
+    - 'grasp': The arm grasps the object.
+    - 'post-grasp': The arm lifts the object.
+    
+    Inputs:
+        arm (object): The robotic arm instance.
+        action (str): The name of the action to be updated or created.
+        pose_type (str): The type of pose to be recorded (one of 'hover', 'pre-grasp', 'grasp', 'post_grasp').
+
+    Returns:
+        bool: True for a successful action record, otherwise False
+    """
+    valid_pose_types = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
+
+    if pose_type not in valid_pose_types:
+        print(f"pose_type must be one of {valid_pose_types}")
+        return False
+
+    # Create an actions.json file if it does not already exist
+    if not os.path.exists('actions.json'):
+        with open('actions.json', 'w') as f:
+            json.dump({}, f)
+
+    # Load existing actions from the file
+    with open('actions.json') as f:
+        actions = json.load(f)
+
+    # Read the current position of the arm
+    positions = arm.read_position()
+    positions = [int(p) for p in positions]
+
+    # Update the action with the specified pose type
+    if action not in actions:
+        actions[action] = {}
+
+    actions[action][pose_type] = positions
+
+    # Write the updated actions back to the file
+    with open('actions.json', 'w') as f:
+        json.dump(actions, f, indent=4)
+
+return True
+
+
+def engage_action(arm, action):
+    """
+    Initiate an action (if present) within the action.json file.
+
+    Inputs:
+        arm (object): The robotic arm instance.
+        action (str): The name of the action to be carried out.
+    """
+    pass
+
 def main():
     arm_config = load_robot_settings()
     arm = initialize_robot(arm_config)
@@ -48,6 +114,7 @@ def main():
     print('Delta angle can be positive or negative, and the servo angle will change by that amount.')
     print('The current position of the servo will be printed after each move.')
     print('Enter "q" at any time to quit.\n\n')
+    # print('Enter "a" at any time to record an action\n\n)'
     while True:
         try:
             user_input = input('Enter servo ID: ')
@@ -63,6 +130,18 @@ def main():
             delta = float(delta_input)
             delta = int(delta * CONVERSION_FACTOR)
             change_servo_angle(arm, servo_id, delta)
+
+            # Optionally record an action
+            # if user_input.lower() == 'a':
+            #     action_name = input('Enter action name: ')
+            #     pose_type = input('Enter pose type (hover, pre-grasp, grasp, post-grasp): ')
+            #     success = record_action(arm, action_name, pose_type)
+            #     if success:
+            #        print('Action recording successful')
+            #     else:
+            #        print('Action recording failed')
+            
+            
         except KeyboardInterrupt:
             break
 
