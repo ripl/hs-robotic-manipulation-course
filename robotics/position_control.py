@@ -35,9 +35,6 @@ def change_servo_angle(arm, servo_id, delta):
     })
     print('\n', df.to_string(index=False), '\n')
 
-import os
-import json
-
 def record_action(arm, action, pose_type):
     """
     This function either updates an existing action or creates a new one if it doesn't exist, and 
@@ -86,7 +83,7 @@ def record_action(arm, action, pose_type):
     with open('actions.json', 'w') as f:
         json.dump(actions, f, indent=4)
 
-return True
+    return True
 
 
 def engage_action(arm, action):
