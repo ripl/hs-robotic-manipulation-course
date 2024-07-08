@@ -2,10 +2,6 @@
 
 Pygame is a set of Python modules designed for writing video games. It provides functionalities like creating graphics, handling input, and playing sounds, making it an excellent choice for beginners to learn game development and graphical programming. 
 
-Pygame operates by continuously updating the game's `state` within a loop, monitoring various `events`. When events such as updating a variable or pressing keys on the keyboard occur, these actions trigger specific responses. The game is then `drawn` (re-rendered) on the screen to reflect the new state.
-
-![Game Loop](https://eng.libretexts.org/@api/deki/files/12879/GWPFigure5.png?revision=1 )
-
 To install pygame onto your machine, run these commands at the terminal within the root folder:
 
 ```bash
@@ -24,6 +20,35 @@ pip install -r requirements.txt
 # To deactivate the virtual environment (only when you are within the virtual environment)
 deactivate
 ```
+## Game Loop
+
+Pygame operates by continuously updating the game's `state` within a loop, monitoring various `events`. When events such as updating a variable or pressing keys on the keyboard occur, these actions trigger specific responses. The game is then `drawn` (re-rendered) on the screen to reflect the new state.
+
+![Game Loop](https://eng.libretexts.org/@api/deki/files/12879/GWPFigure5.png?revision=1 )
+
+The code segment that acts as the game loop is:
+
+```python
+running = True
+while running:
+    # Poll for events
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    # Update the game state (add your game logic here)
+
+    # Fill the screen with a color to wipe away anything from the last frame
+    screen.fill("purple")
+
+    # Render the updated game state here
+
+    # Redraw the new game state
+    pygame.display.flip()
+
+    # Limit FPS to 60
+    clock.tick(60)
+```
 
 ## Coordinate System
 
@@ -34,8 +59,6 @@ Here's a breakdown:
 - The **origin (0, 0)** is located at the **top-left corner** of the screen.
 - The **x-axis** increases as you move to the **right**.
 - The **y-axis** increases as you move **downwards**.
-
-
 
 ## Colors
 
