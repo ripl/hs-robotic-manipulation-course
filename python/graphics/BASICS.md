@@ -2,10 +2,23 @@
 
 Pygame is a set of Python modules designed for writing video games. It provides functionalities like creating graphics, handling input, and playing sounds, making it an excellent choice for beginners to learn game development and graphical programming. Pygame is built on top of the Simple DirectMedia Layer (SDL) library, which is a low-level media library written in C.
 
-To install pygame onto your machine, run this command at the terminal:
+To install pygame onto your machine, run these commands at the terminal within the root folder:
 
 ```bash
-pip install pygame --break-system-packages
+# Create a virtual environment in the project root
+python3 -m venv env
+
+# Add the project to the PYTHONPATH in the virtual environment
+echo 'export PYTHONPATH="$PYTHONPATH:/absolute/path/to/hs-robotic-manipulation-course"' >> env/bin/activate
+
+# Activate the virtual environment
+source env/bin/activate
+
+# Install the dependencies
+pip install -r requirements.txt
+
+# To deactivate the virtual environment
+deactivate
 ```
 
 ## Colors
