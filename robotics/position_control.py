@@ -1,4 +1,4 @@
-import json, time
+import json, time, os
 import numpy as np
 import pandas as pd
 from robot.robot import Robot
@@ -105,38 +105,37 @@ def main():
 
     # Position control loop
     print('\n\nWelcome to position control mode!')
+    print('Enter "p" to position each motor 1 at a time.')
     print('Enter servo ID and delta angle (in degrees) to move the servo.')
     print('Delta angle can be positive or negative, and the servo angle will change by that amount.')
     print('The current position of the servo will be printed after each move.')
-    print('Enter "q" at any time to quit.\n\n')
-    # print('Enter "a" at any time to record an action\n\n)'
+    print('Enter "q" at any time to quit.')
+    print('Enter "a" at any time to record an action\n\n')
+    
     while True:
         try:
-            user_input = input('Enter servo ID: ')
+            user_input = input('Enter task: ').lower()
+            
             if user_input.lower() == 'q':
                 break
-            servo_id = int(user_input)
-            if servo_id not in arm_config['servo_ids']:
-                print(f'Invalid servo ID. Please enter one of {arm_config["servo_ids"]}\n')
-                continue
-            delta_input = input('Enter delta angle: ')
-            if delta_input.lower() == 'q':
-                break
-            delta = float(delta_input)
-            delta = int(delta * CONVERSION_FACTOR)
-            change_servo_angle(arm, servo_id, delta)
+            elif user_input == 'p':
+                servo_id = int(input("Enter Servo id: "))
+                if servo_id not in arm_config['servo_ids']:
+                    print(f'Invalid servo ID. Please enter one of {arm_config["servo_ids"]}\n')
+                    continue
+                delta = float(input('Enter delta angle: '))
+                delta = int(delta * CONVERSION_FACTOR)
 
+                change_servo_angle(arm, servo_id, delta)
             # Optionally record an action
-            # if user_input.lower() == 'a':
-            #     action_name = input('Enter action name: ')
-            #     pose_type = input('Enter pose type (hover, pre-grasp, grasp, post-grasp): ')
-            #     success = record_action(arm, action_name, pose_type)
-            #     if success:
-            #        print('Action recording successful')
-            #     else:
-            #        print('Action recording failed')
-            
-            
+            elif user_input.lower() == 'a':
+                action_name = input('Enter action name: ')
+                pose_type = input('Enter pose type (hover, pre-grasp, grasp, post-grasp): ')
+                success = record_action(arm, action_name, pose_type)
+                if success:
+                   print('Action recording successful')
+                else:
+                   print('Action recording failed')
         except KeyboardInterrupt:
             break
 
