@@ -86,7 +86,7 @@ def record_action(arm, action, pose_type):
     return True
 
 
-def engage_action(arm, action):
+def initiate_action(arm, action):
     """
     Initiate an action (if present) within the action.json file.
 
@@ -94,7 +94,15 @@ def engage_action(arm, action):
         arm (object): The robotic arm instance.
         action (str): The name of the action to be carried out.
     """
-    pass
+    valid_pose_types = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
+
+    # Load existing actions from the file
+    with open('actions.json') as f:
+        actions = json.load(f)
+
+    for pose in valid_pose_types:
+        arm.set_and_wait_goal_pos(actions[action][pose])
+    
 
 def main():
     arm_config = load_robot_settings()
@@ -111,7 +119,7 @@ def main():
     print('The current position of the servo will be printed after each move.')
     print('Enter "q" at any time to quit.')
     print('Enter "a" at any time to record an action\n\n')
-    
+
     while True:
         try:
             user_input = input('Enter task: ').lower()
