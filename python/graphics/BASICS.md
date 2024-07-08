@@ -1,6 +1,10 @@
 # Pygame Basics
 
-Pygame is a set of Python modules designed for writing video games. It provides functionalities like creating graphics, handling input, and playing sounds, making it an excellent choice for beginners to learn game development and graphical programming. Pygame is built on top of the Simple DirectMedia Layer (SDL) library, which is a low-level media library written in C.
+Pygame is a set of Python modules designed for writing video games. It provides functionalities like creating graphics, handling input, and playing sounds, making it an excellent choice for beginners to learn game development and graphical programming. 
+
+Pygame operates by continuously updating the game's `state` within a loop, monitoring various `events`. When events such as updating a variable or pressing keys on the keyboard occur, these actions trigger specific responses. The game is then `drawn` (re-rendered) on the screen to reflect the new state.
+
+![Game Loop](https://eng.libretexts.org/@api/deki/files/12879/GWPFigure5.png?revision=1 )
 
 To install pygame onto your machine, run these commands at the terminal within the root folder:
 
@@ -20,6 +24,18 @@ pip install -r requirements.txt
 # To deactivate the virtual environment (only when you are within the virtual environment)
 deactivate
 ```
+
+## Coordinate System
+
+Pygame's coordinate system is based on pixels and follows the Cartesian coordinate system with some key differences. 
+
+Here's a breakdown:
+
+- The **origin (0, 0)** is located at the **top-left corner** of the screen.
+- The **x-axis** increases as you move to the **right**.
+- The **y-axis** increases as you move **downwards**.
+
+
 
 ## Colors
 
