@@ -40,8 +40,6 @@ import json
 
 def record_action(arm, action, pose_type):
     """
-    Updates an existing action or creates a new action with specified pose type for the arm.
-
     This function either updates an existing action or creates a new one if it doesn't exist, and 
     then adds or updates one of the four pose types for that action.
 
