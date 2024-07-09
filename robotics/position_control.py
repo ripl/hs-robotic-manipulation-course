@@ -6,6 +6,15 @@ from robot.robot import Robot
 CONVERSION_FACTOR = 4096 / 360
 
 def load_robot_settings():
+    """
+    Load the config file for the Robot arm instances.
+
+    Inputs:
+        None
+
+    Returns:
+        arm_config (dict): A dictionary continaing the arm configuration parameters.
+    """
     with open('config.json') as f:
         config = json.load(f)
     arm_config = config['arm']
@@ -23,10 +32,9 @@ def initialize_robot(arm_config):
         - 'min_position_limit': Minimum position limit of each servo of the arm.
 
     Inputs:
-        arm_config (dict): A dictionary containing the configuration parameters 
-                           for initializing the robotic arm. 
+        arm_config (dict): A dictionary containing the arm configuration parameters.
 
-    Return:
+    Returns:
         arm (object): A conigured (arm) Robot instance.
     """
     arm = Robot(
@@ -48,7 +56,7 @@ def change_servo_angle(arm, servo_id, delta):
         servo_id (int): The id of the servo whose angle is to be changed.
         delta (float): The +/- rotation to be applied to the servo motor.
 
-    Return:
+    Returns:
         None
     """
     pos = arm.read_position()
@@ -123,13 +131,7 @@ def initiate_action(arm, action):
 
     Inputs:
         arm (object): The robotic arm instance.
-        action (str): The name of t    Notes: 
-        The arm_config should include:
-            - 'device_name': Name of the port connected to the robot arm.
-            - 'servo_ids': List of servo IDs for the arm.
-            - 'velocity_limit': Maximum velocity limit of each servo of the arm.
-            - 'max_position_limit': Maximum position limit of each servo of the arm.
-            - 'min_position_limit': Minimum position limit of each servo of the arm.he action to be carried out.
+        action (str): The name of the action to be executed.
     
     Returns:
         None
