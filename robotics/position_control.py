@@ -12,14 +12,45 @@ def load_robot_settings():
     return arm_config
 
 def initialize_robot(arm_config):
-    arm = Robot(device_name=arm_config['device_name'], 
-                servo_ids=arm_config['servo_ids'],
-                velocity_limit=arm_config['velocity_limit'],
-                max_position_limit=arm_config['max_position_limit'],
-                min_position_limit=arm_config['min_position_limit'])
+    """
+    Creates and initializes a robot instance using the provided arm configuration.
+
+    Arm configuration should include:
+        - 'device_name': Name of the port connected to the robot arm.
+        - 'servo_ids': List of servo IDs for the arm.
+        - 'velocity_limit': Maximum velocity limit of each servo of the arm.
+        - 'max_position_limit': Maximum position limit of each servo of the arm.
+        - 'min_position_limit': Minimum position limit of each servo of the arm.
+
+    Inputs:
+        arm_config (dict): A dictionary containing the configuration parameters 
+                           for initializing the robotic arm. 
+
+    Return:
+        arm (object): A conigured (arm) Robot instance.
+    """
+    arm = Robot(
+                arm_config['device_name'], 
+                arm_config['servo_ids'],
+                arm_config['velocity_limit'],
+                arm_config['max_position_limit'],
+                arm_config['min_position_limit']
+                )
     return arm
 
 def change_servo_angle(arm, servo_id, delta):
+    """
+    Adjusts the angle of a specified servo motor by a given delta and prints 
+    the updated angles of all servos in the robotic arm instance.
+
+    Inputs:
+        arm (object): The robotic arm instance
+        servo_id (int): The id of the servo whose angle is to be changed.
+        delta (float): The +/- rotation to be applied to the servo motor.
+
+    Return:
+        None
+    """
     pos = arm.read_position()
     pos = [int(p) for p in pos]
     servo_id_index = arm.servo_ids.index(servo_id)
@@ -37,14 +68,14 @@ def change_servo_angle(arm, servo_id, delta):
 
 def record_action(arm, action, pose_type):
     """
-    This function either updates an existing action or creates a new one if it doesn't exist, and 
-    then adds or updates one of the four pose types for that action.
+    Updates an existing action or creates a new one if it doesn't exist, 
+    and records one of the four pose types for that action.
 
-    The four pose types are:
-    - 'hover': The arm placement before attempting to grasp an object.
-    - 'pre-grasp': The arm moves into a grasping position.
-    - 'grasp': The arm grasps the object.
-    - 'post-grasp': The arm lifts the object.
+    An action consists of four pose types:
+        - 'hover': Arm placement before attempting to grasp an object.
+        - 'pre-grasp': Arm moves into a grasping position.
+        - 'grasp': Arm grasps the object.
+        - 'post-grasp': Arm lifts the object.
     
     Inputs:
         arm (object): The robotic arm instance.
@@ -92,7 +123,16 @@ def initiate_action(arm, action):
 
     Inputs:
         arm (object): The robotic arm instance.
-        action (str): The name of the action to be carried out.
+        action (str): The name of t    Notes: 
+        The arm_config should include:
+            - 'device_name': Name of the port connected to the robot arm.
+            - 'servo_ids': List of servo IDs for the arm.
+            - 'velocity_limit': Maximum velocity limit of each servo of the arm.
+            - 'max_position_limit': Maximum position limit of each servo of the arm.
+            - 'min_position_limit': Minimum position limit of each servo of the arm.he action to be carried out.
+    
+    Returns:
+        None
     """
     valid_pose_types = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
 
@@ -100,9 +140,22 @@ def initiate_action(arm, action):
     with open('actions.json') as f:
         actions = json.load(f)
 
+    if action not in actions:
+        print(f"Error: {action} is not a valid action.")
+        return
+
+    # Initiate each pose within the provided action
+    # Sleep for 0.25 seconds after each pose.
     for pose in valid_pose_types:
-        arm.set_and_wait_goal_pos(actions[action][pose])
+
+        if pose in actions[action]:
+            arm.set_and_wait_goal(actions[action][pose])
+            time.sleep(0.25)
+        else:
+            print(f"Error: {pose} is not found, {action} is incomplete.")
+            return
     
+    print(f"{action} completed successfully.")
 
 def main():
     arm_config = load_robot_settings()
@@ -118,14 +171,18 @@ def main():
     print('Delta angle can be positive or negative, and the servo angle will change by that amount.')
     print('The current position of the servo will be printed after each move.')
     print('Enter "q" at any time to quit.')
+    print('Enter "i" to use a saved action')
     print('Enter "a" at any time to record an action\n\n')
 
     while True:
         try:
             user_input = input('Enter task: ').lower()
             
-            if user_input.lower() == 'q':
+            if user_input == 'q':
                 break
+            elif user_input == 'i':
+                action = input('Enter action name')
+                initiate_action(arm, action)
             elif user_input == 'p':
                 servo_id = int(input("Enter Servo id: "))
                 if servo_id not in arm_config['servo_ids']:
