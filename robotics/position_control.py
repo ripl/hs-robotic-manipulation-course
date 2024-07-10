@@ -1,10 +1,17 @@
-import json, time, os
+import json, time, os, threading, argparse
 import numpy as np
 import pandas as pd
 from robot.robot import Robot
 
 CONVERSION_FACTOR = 4096 / 360
 VALID_POSE_TYPES = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Record positions for tic-tac-toe game.')
+    parser.add_argument('-l', '--leader', action='store_true', default=False, 
+                        help='Enable teleoperation using a leader arm.')
+    return parser.parse_args()
 
 def calculate_action_margin_of_error(arm, action):
     """
@@ -49,7 +56,7 @@ def calculate_action_margin_of_error(arm, action):
         
     print()
 
-def load_robot_settings():
+def load_robot_settings(args):
     """
     Load the config file for the Robot arm instances.
 
@@ -63,10 +70,11 @@ def load_robot_settings():
         config = json.load(f)
 
     arm_config = config['arm']
+    lead_config = config['leader'] if args.leader else None
     
-    return arm_config
+    return arm_config, lead_config
 
-def initialize_robot(arm_config):
+def initialize_robot(arm_config, lead_config):
     """
     Creates and initializes a robot instance using the provided arm configuration.
 
@@ -92,7 +100,36 @@ def initialize_robot(arm_config):
                 arm_config['max_position_limit'],
                 arm_config['min_position_limit']
                 )
-    return arm
+    
+    lead = None
+    if lead_config:
+        lead = Robot(
+                    lead_config['device_name'], 
+                    lead_config['baudrate'], 
+                    lead_config['servo_ids']
+                    )
+        lead.set_trigger_torque()
+    return arm, lead
+
+def record_position_with_leader(arm, lead, action, pose_type):
+    print(f'Move the arm to the {pose_type} position of the action called "{action}"')
+    stop = threading.Event()
+    def wait_for_input(stop):
+        input('Press enter to record. ')
+        stop.set()
+    thread = threading.Thread(target=wait_for_input, args=(stop,))
+    thread.start()
+     # Teleoperation
+    while not stop.is_set():
+        pos = lead.read_position()
+        arm.set_goal_pos(pos)
+    thread.join()
+    # Record position
+    positions = [int(p) for p in positions]
+
+    print('Leader Arm Recording Successfull')
+
+    return positions
 
 def print_joint_angles(arm):
     time.sleep(0.25)
@@ -146,11 +183,6 @@ def record_action(arm, action, pose_type):
         print(f"pose_type must be one of {VALID_POSE_TYPES}")
         return False
 
-    # Create an actions.json file if it does not already exist
-    if not os.path.exists('actions.json'):
-        with open('actions.json', 'w') as f:
-            json.dump({}, f)
-
     # Load existing actions from the file
     with open('actions.json') as f:
         actions = json.load(f)
@@ -192,11 +224,6 @@ def manual_record(arm, action, pose_type):
     if pose_type not in VALID_POSE_TYPES:
         print(f"pose_type must be one of {VALID_POSE_TYPES}")
         return False
-
-    # Create an actions.json file if it does not already exist
-    if not os.path.exists('actions.json'):
-        with open('actions.json', 'w') as f:
-            json.dump({}, f)
 
     # Load existing actions from the file
     with open('actions.json') as f:
@@ -264,11 +291,23 @@ def initiate_action(arm, action):
     print(f"{action} completed successfully.")
 
 def main():
-    arm_config = load_robot_settings()
-    arm = initialize_robot(arm_config)
+    args = parse_arguments()
+    arm_config, lead_config = load_robot_settings(args)
+    arm , lead = initialize_robot(arm_config, lead_config)
     
-    # Go to home position
-    arm.set_and_wait_goal_pos(arm_config['home_pos'])
+    # Go to either home or lead position
+    if not args.leader:
+        arm.set_and_wait_goal_pos(arm_config['home_pos'])
+    else:
+        lead_positions = lead.read_position()
+        lead_positions = [int(p) for p in lead_positions]
+        arm.set_and_wait_goal_pos(lead_positions)
+
+
+    # Create an actions.json file if it does not already exist
+    if not os.path.exists('actions.json'):
+        with open('actions.json', 'w') as f:
+            json.dump({}, f)
 
     # Position control loop
     print('\nWelcome to position control mode!\n')
@@ -285,58 +324,81 @@ def main():
 
     while proceed:
         try:
-            # os.system('clear')
+            os.system('clear')
             print("Joint Angle Readings:")
             print_joint_angles(arm)
-            print('1) Enter "p" to position a specific motor.')
-            print('2) Enter "a" to use a saved action')
-            print('3) Enter "g" to go to a specific pose within an action.')
-            print('4) Enter "m" to manually position the robot. Be warned, the reading is not accurate.')
-            print('5) Enter "r" at any time to record new action.')
-            print('6) Enter "t" to test the margin of error of an action.')
-            print('7) Enter "q" at any time to quit.\n')
-            user_input = input('Enter task: ').lower()
-            
-
-            if user_input in ['p', 'r', 'm', 'g', 'q', 'a', 't']:
-                if user_input == 'q':
-                    print("Exiting Position Control...")
-                    print("Goodbye!")
-                    break
-                elif user_input == 'm':
-                    action = input("Enter action you want to modify: ")
-                    pose_type = input("Enter pose you'd like to manually set: ")
-                    manual_record(arm, action, pose_type)
-                elif user_input == 'g':
-                    action = input("Enter action name: ")
-                    pose_type = input("Enter pose you'd like to go to: ")
-                    go_to_pose(arm, action, pose_type)
-                elif user_input == 'a':
-                    action = input('Enter the action you want to initiate: ')
-                    initiate_action(arm, action)
-                    print()
-                elif user_input == 'p':
-                    servo_id = int(input("Enter Servo id to be positioned: "))
-                    if servo_id not in arm_config['servo_ids']:
-                        print(f'Invalid servo ID. Please enter one of {arm_config["servo_ids"]}\n')
-                        continue
-                    delta = float(input('Enter delta angle: '))
-                    delta = int(delta * CONVERSION_FACTOR)
-                    change_servo_angle(arm, servo_id, delta)
-                elif user_input.lower() == 'r':
-                    action_name = input('Enter action name: ')
-                    pose_type = input('Enter pose type (hover, pre-grasp, grasp, post-grasp): ')
-                    success = record_action(arm, action_name, pose_type)
-                    if success:
-                        print('Action recording successful')
-                    else:
-                        print('Action recording failed')
-                elif user_input == 't':
-                    action = input('Enter action to be tested: ')
-                    calculate_action_margin_of_error(arm, action)
+            if args.leader:
+                print("You have entered Teleoperation mode. You can use the leader arm to position your Robotic Arm.")
                 print()
+                print("First enter the action name, followed by the pose type you want to record.")
+                print()
+                action = input("Enter an action name: ")
+                pose_type = input("Enter a pose_type: ")
+                print()
+                positions = record_position_with_leader(arm, lead, action, pose_type)
+                 # Load existing actions from the file
+                with open('actions.json') as f:
+                    actions = json.load(f)
+                
+                # Update the action with the specified pose type
+                if action not in actions:
+                    actions[action] = {}
+
+                actions[action][pose_type] = positions
+
+                # Write the updated actions back to the file
+                with open('actions.json', 'w') as f:
+                    json.dump(actions, f, indent=4)
             else:
-                continue
+                print('1) Enter "p" to position a specific motor.')
+                print('2) Enter "a" to use a saved action')
+                print('3) Enter "g" to go to a specific pose within an action.')
+                print('4) Enter "m" to manually position the robot. Be warned, the reading is not accurate.')
+                print('5) Enter "r" at any time to record new action.')
+                print('6) Enter "t" to test the margin of error of an action.')
+                print('7) Enter "q" at any time to quit.\n')
+                user_input = input('Enter task: ').lower()
+                
+
+                if user_input in ['p', 'r', 'm', 'g', 'q', 'a', 't']:
+                    if user_input == 'q':
+                        print("Exiting Position Control...")
+                        print("Goodbye!")
+                        break
+                    elif user_input == 'm':
+                        action = input("Enter action you want to modify: ")
+                        pose_type = input("Enter pose you'd like to manually set: ")
+                        manual_record(arm, action, pose_type)
+                    elif user_input == 'g':
+                        action = input("Enter action name: ")
+                        pose_type = input("Enter pose you'd like to go to: ")
+                        go_to_pose(arm, action, pose_type)
+                    elif user_input == 'a':
+                        action = input('Enter the action you want to initiate: ')
+                        initiate_action(arm, action)
+                        print()
+                    elif user_input == 'p':
+                        servo_id = int(input("Enter Servo id to be positioned: "))
+                        if servo_id not in arm_config['servo_ids']:
+                            print(f'Invalid servo ID. Please enter one of {arm_config["servo_ids"]}\n')
+                            continue
+                        delta = float(input('Enter delta angle: '))
+                        delta = int(delta * CONVERSION_FACTOR)
+                        change_servo_angle(arm, servo_id, delta)
+                    elif user_input.lower() == 'r':
+                        action_name = input('Enter action name: ')
+                        pose_type = input('Enter pose type (hover, pre-grasp, grasp, post-grasp): ')
+                        success = record_action(arm, action_name, pose_type)
+                        if success:
+                            print('Action recording successful')
+                        else:
+                            print('Action recording failed')
+                    elif user_input == 't':
+                        action = input('Enter action to be tested: ')
+                        calculate_action_margin_of_error(arm, action)
+                    print()
+                else:
+                    continue
         except KeyboardInterrupt:
             break
 
@@ -344,6 +406,8 @@ def main():
     print()
     arm.set_and_wait_goal_pos(arm_config['rest_pos'])
     arm._disable_torque()
+    if args.leader:
+        lead._disable_torque()
 
 if __name__ == '__main__':
     main()
