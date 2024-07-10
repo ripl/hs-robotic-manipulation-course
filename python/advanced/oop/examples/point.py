@@ -10,9 +10,9 @@ class Point:
   >>> p1
   Point(0, 0)
   >>> p2 = Point(1, 3)
-  >>> p2.x
+  >>> p2.x_coordinate
   1
-  >>> p2.y
+  >>> p2.y_coordinate
   3
   >>> p3 = p1.subtract(p2)
   >>> p3
@@ -23,9 +23,12 @@ class Point:
   >>> Point.get_count()
   3
   >>> p2.distance(p3)
-  6.71
+  6.32
+  >>> p4 = p2 + p3
+  >>> p4
+  Point(0, 0)
   """
-  quantity = 0
+  quantity = 0 # class attribute
     
   def __init__(self, x, y):
     """
@@ -33,7 +36,7 @@ class Point:
     """
     self.x_coordinate = x
     self.y_coordinate = y
-    Point.quantity += 1
+    Point.quantity += 1 # access using the class Name
     
   def subtract(self, other): 
     """
@@ -49,6 +52,9 @@ class Point:
     """
     return f"Point({self.x_coordinate}, {self.y_coordinate})"
   
+  def __add__(self, other):
+    return Point(self.x_coordinate + other.x_coordinate, self.y_coordinate + other.y_coordinate)
+
   def distance(self, other):
     """
     Return the distance between two Point instances.
@@ -59,9 +65,10 @@ class Point:
     Notes:
       The distance formula between points is √((x2 - x1)^2 + (y2 - y1)^2)
     """
-    pass
+    distance = sqrt((other.x_coordinate - self.x_coordinate)** 2 + (other.y_coordinate - self.y_coordinate)** 2)
+    return round(distance, 2)
 
-  @classmethod
+  @classmethod # Decorator
   def get_count(cls):
     """
     Returns the number of Point instances created.

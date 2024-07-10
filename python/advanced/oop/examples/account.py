@@ -6,7 +6,7 @@ class BankAccount:
     ---------
     >>> acc1 = BankAccount("John Doe", 1000)
     >>> acc1
-    BankAccount(John Doe, 1000)
+    BankAccount('John Doe', 1000)
     >>> acc1.account_name()
     'John Doe'
     >>> acc1.balance()
@@ -17,7 +17,7 @@ class BankAccount:
     1300
     >>> acc2 = BankAccount("Jane Doe", 500)
     >>> acc2
-    BankAccount(Jane Doe, 500)
+    BankAccount('Jane Doe', 500)
     >>> acc1.transfer(acc2, 300)
     Transferred 300 to Jane Doe
     >>> acc1.balance()
@@ -44,13 +44,14 @@ class BankAccount:
         """
         Create a BankAccount instance with a name and initial deposit.
         """
-        pass
+        self.__name = name
+        self.__balance = initial_deposit
 
     def account_name(self):
         """
         Return the name of the account holder.
         """
-        pass
+        return self.__name
 
     def balance(self):
         """
@@ -62,28 +63,40 @@ class BankAccount:
         """
         Withdraw a specified amount from the account.
         """
-        pass
+        self.__balance -= amount
+        return self.__balance
+        
 
     def deposit(self, amount):
         """
         Deposit a specified amount into the account.
         """
-        pass
+        self.__balance += amount
+        return self.__balance
 
     def transfer(self, other, amount):
         """
         Transfer a specified amount to another BankAccount.
         """
-        pass
+        if self.__balance < amount:
+            print('Insufficient funds for transfer.')
+        else:
+            self.__balance -= amount
+            other.deposit(amount)
+            print(f"Transferred {amount} to {other.account_name()}")
+        
 
     def convert_to(self, currency):
         """
         Convert the account balance to the specified currency.
         """
-        pass
+        if currency not in BankAccount.conversion_rates:
+            print("Invalid currency. Must be 'USD', 'EUR', or 'MXN'.")
+        else:
+            return self.__balance * BankAccount.conversion_rates[currency]
 
     def __repr__(self):
         """
         Return a string representation of the BankAccount instance.
         """
-        pass
+        return f'BankAccount{self.account_name(), self.balance()}'
