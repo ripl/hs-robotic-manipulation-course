@@ -11,6 +11,8 @@ class Point:
   >>> p3 = p1.subtract(p2)
   >>> p3
   Point(7, 1)
+  >>> Point.get_count()
+  3
   """
   quantity = 0
     
@@ -35,3 +37,10 @@ class Point:
      Returns a string representation of the Point instance.
     """
     return f"Point({self.x_coordinate}, {self.y_coordinate})"
+
+  @classmethod
+  def get_count(cls):
+    """
+    Returns the number of Point instances created.
+    """
+    return cls.quantity
