@@ -4,13 +4,17 @@ class Point:
 
   Examples:
   ---------
-  >>> p1 = Point(10, 2)
+  >>> p1 = Point(0, 0)
   >>> p1
-  Point(10, 2)
-  >>> p2 = Point(3, 1)
+  Point(0, 0)
+  >>> p2 = Point(1, 3)
+  >>> p2.x
+  1
+  >>> p2.y
+  3
   >>> p3 = p1.subtract(p2)
   >>> p3
-  Point(7, 1)
+  Point(-1, -3)
   >>> Point.get_count()
   3
   """
