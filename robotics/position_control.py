@@ -127,7 +127,7 @@ def record_position_with_leader(arm, lead, action, pose_type):
     # Record position
     positions = [int(p) for p in positions]
 
-    print('Leader Arm Recording Successfull')
+    print(f'{action}: {pose_type} recored successfully')
 
     return positions
 
@@ -154,11 +154,11 @@ def change_servo_angle(arm, servo_id, delta):
     Returns:
         None
     """
-    pos = arm.read_position()
-    pos = [int(p) for p in pos]
+    positions = arm.read_position()
+    positions = [int(p) for p in positions]
     servo_id_index = arm.servo_ids.index(servo_id)
-    pos[servo_id_index] += delta
-    arm.set_and_wait_goal_pos(pos, servo_id=servo_id)
+    positions[servo_id_index] += delta
+    arm.set_and_wait_goal_pos(positions, servo_id=servo_id)
 
 def record_action(arm, action, pose_type):
     """
@@ -330,25 +330,25 @@ def main():
             if args.leader:
                 print("You have entered Teleoperation mode. You can use the leader arm to position your Robotic Arm.")
                 print()
-                print("First enter the action name, followed by the pose type you want to record.")
+                print("First enter the action name, then record each pose!.")
                 print()
                 action = input("Enter an action name: ")
-                pose_type = input("Enter a pose_type: ")
                 print()
-                positions = record_position_with_leader(arm, lead, action, pose_type)
-                 # Load existing actions from the file
-                with open('actions.json') as f:
-                    actions = json.load(f)
-                
-                # Update the action with the specified pose type
-                if action not in actions:
-                    actions[action] = {}
+                for pose_type in VALID_POSE_TYPES:
+                    positions = record_position_with_leader(arm, lead, action, pose_type)
+                    # Load existing actions from the file
+                    with open('actions.json') as f:
+                        actions = json.load(f)
+                    
+                    # Update the action with the specified pose type
+                    if action not in actions:
+                        actions[action] = {}
 
-                actions[action][pose_type] = positions
+                    actions[action][pose_type] = positions
 
-                # Write the updated actions back to the file
-                with open('actions.json', 'w') as f:
-                    json.dump(actions, f, indent=4)
+                    # Write the updated actions back to the file
+                    with open('actions.json', 'w') as f:
+                        json.dump(actions, f, indent=4)
             else:
                 print('1) Enter "p" to position a specific motor.')
                 print('2) Enter "a" to use a saved action')
