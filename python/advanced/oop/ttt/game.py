@@ -132,6 +132,8 @@ class TicTacToe:
       |   |   
     ---------
       |   |  
+    >>> game.step_back()
+    This is the initial state of the board.
     """
     def __init__(self, player1, player2, board=None):
         """
