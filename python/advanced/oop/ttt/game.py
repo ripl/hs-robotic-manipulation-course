@@ -75,6 +75,8 @@ class TicTacToe:
     x | x |  
     ---------
     o |   |  
+    >>> game.current_player()
+    'o'
     >>> game.place_piece(7)
     Your move, Player 1
     x | o |  
@@ -91,6 +93,45 @@ class TicTacToe:
     o | o | x 
     >>> game.get_winner()
     'x'
+    >>> game.step_back()
+    Your move, Player 1
+    x | o |  
+    ---------
+    x | x |  
+    ---------
+    o | o |  
+    >>> game.place_piece(2)
+    Your move, Player 2
+    x | o | x 
+    ---------
+    x | x |  
+    ---------
+    o | o | 
+    >>> game.determine_draw()
+    False
+    >>> game.place_piece(5)
+    Your move, Player 1
+    x | o | x 
+    ---------
+    x | x | o 
+    ---------
+    o | o | 
+    >>> game.place_piece(8)
+    Cat Game!
+    x | o | x 
+    ---------
+    x | x | o 
+    ---------
+    o | o | x
+    >>> game.determine_draw()
+    True
+    game.reset()
+    Your move, Player 1
+      |   |   
+    ---------
+      |   |   
+    ---------
+      |   |  
     """
     def __init__(self, player1, player2, board=None):
         """
@@ -161,15 +202,6 @@ class TicTacToe:
         :param pos: The position on the board.
         """
         pass
-
-    def __getitem__(self, pos):
-        """
-         Allow bracket notation for accessing the board.
-        
-        :param pos: The position on the board.
-        :returns: The value at the given position on the board.
-        """
-        return self.board[index]
 
     def update(self):
         """
