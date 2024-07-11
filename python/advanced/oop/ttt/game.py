@@ -19,12 +19,19 @@ class Player:
     # cls variable
     player_count = 0
 
+    def __new__(cls, piece):
+        if cls.player_count >= 2:
+            print('Warning: Cannot create more than two players.')
+            return None
+        return super(Player, cls).__new__(cls)
+
     def __init__(self, piece):
-        pass
+        self.piece = piece
+        Player.player_count += 1
+        self.count = Player.player_count
 
     def __repr__(self):
-        pass
-
+        return f'Player {self.count} is "{self.piece}"'
 
 class TicTacToe:
     """
@@ -37,7 +44,7 @@ class TicTacToe:
     >>> p2 = Player('o')
     >>> board = ['x', 'o', None, 'x', None, None, None, None, None ]
     >>> game = TicTacToe(p1, p2, board)
-    Your move, Player 2
+    Your move, Player 2player2.
     x | o |  
     ---------
     x |   |  
@@ -153,13 +160,13 @@ class TicTacToe:
         else:
             self.board = board
             # Determine which Players turn it is
-            x_count = board.count('x')
-            o_count = board.count('o')
+            p1_count = board.count(self.p1.piece)
+            p2_count = board.count(self.p1.piece)
 
-            if x_count > o_count:
-                self.curr_turn = player2.piece
+            if p1_count > p2_count:
+                self.curr_turn = self.p1.piece
             else:
-                self.curr_turn = player1.piece
+                self.curr_turn = self.p2.piece
 
         # Record the current state of the board.
         self.history = [self.board.copy()]
@@ -173,7 +180,7 @@ class TicTacToe:
         
         :returns: The piece of the current player.
         """
-        pass
+        return self.curr_turn
         
     def __repr__(self):
         """
@@ -182,25 +189,54 @@ class TicTacToe:
         :returns: The string representation of the board.
         """
         board_str = ''
-        
-        # Build the board string here. Hint: Use format strings!
-        r1 = f' {self.board[0]} | {self.board[1]} | {self.board[2]} '
-        div = '---------'
 
-        # board_ str += r1 + '\n' div = ....
+        def piece(space):
+            if space is None:
+                return ' '
+            else:
+                return space
         
-        
+        # Build the board strinng here. Hint: Use format strings!
+        if self.current_player() == self.p1.piece:
+            player = self.p1.count
+        else:
+            player = self.p2.count
+
+        if self.curr_player_wins():
+            board_str += f'Player {player} Wins!'
+        elif self.determine_draw():
+            board_str += 'Cat Game!'
+        else:
+            board_str += f'Your move, Player {player}'
+
+        board_str += '\n'
+        board_str += f'{piece(self.board[0])} | {piece(self.board[1])} | {piece(self.board[2])}'
+        board_str += '\n'
+        board_str += '---------'
+        board_str += '\n'
+        board_str += f'{piece(self.board[3])} | {piece(self.board[4])} | {piece(self.board[5])}'
+        board_str += '\n'
+        board_str += '---------'
+        board_str += '\n'
+        board_str += f'{piece(self.board[6])} | {piece(self.board[7])} | {piece(self.board[8])}'
+
         return board_str
 
-    def is_valid_move(self, row, col):
+    def is_valid_move(self, pos):
         """
         Determine if the given coordinates are a valid move.
         
-        :param row: The row of the move.
-        :param col: The column of the move.
+        :param pos: The position on the board.
         :returns: True if the move is valid, False otherwise.
         """
-        pass
+        if not 0 <= pos < 9:
+            print('Space is occupied!')
+            return False
+        elif self.board[pos] is not None:
+            print('Invalid space!')
+            return False
+        else:
+            return True 
 
     def place_piece(self, pos):
         """
@@ -208,13 +244,23 @@ class TicTacToe:
         
         :param pos: The position on the board.
         """
-        pass
+        if self.is_valid_move(pos):
+            self.board[pos] = self.current_player()
+            self.history.append(self.board)
+        
+        if not self.curr_player_wins():
+            self.update()
+        
+        print(self)
 
     def update(self):
         """
         Update the current turn of the player in the game ('x' or 'o').
         """
-        pass
+        if self.curr_turn == self.p1.piece:
+            self.curr_turn = self.p2.piece
+        else:
+            self.curr_turn = self.p1.piece
 
     def curr_player_wins(self):
         """
@@ -227,7 +273,12 @@ class TicTacToe:
             (0, 3, 6), (1, 4, 7), (2, 5, 8),  # vertical
             (0, 4, 8), (2, 4, 6)              # diagonal
         ]
-        pass
+        for tri in winning_triples:
+            x, y, z = tri
+            if self.board[x] is not None and self.board[x] == self.board[y] == self.board[z]:
+                return True
+        
+        return False
 
     def get_winner(self):
         """
@@ -235,7 +286,10 @@ class TicTacToe:
         
         :returns: The piece of the winner, or None if there is no winner.
         """
-        pass
+        if self.curr_player_wins():
+            return self.current_player()
+
+        return None
 
     def determine_draw(self):
         """
@@ -243,17 +297,47 @@ class TicTacToe:
         
         :returns: True if the game is a draw, False otherwise.
         """
-        pass
+        for space in self.board:
+            if space is None:
+                return False
+            
+        return True
 
     def reset_game(self):
         """
-        Reset the game to its initial state (an empty board).
+        Reset the game to its an empty board.
         """
-        pass
+        self.board = [None] * 9
+        self.history = [self.board]
+        self.curr = self.p1.piece
+
+        print(self)
+    
+    def reset_initial_state(self):
+        """
+        Reset the game to its initial state.
+        """
+        self.board = self.history[0]
+
+        self.history = [self.board]
+
+        if self.board.count(self.p1.piece) > self.board.count(self.p2.piece):
+            self.curr_turn = self.p2.piece
+        else:
+            self.curr_turn = self.p1.piece
+
+        print(self)
     
     def step_back(self):
         """
         Revert to the previous state of the game. 
         Hint: Use, self.history
         """
-        pass
+        if len(self.history) > 1:
+            self.history.pop()
+            self.board = self.history[len(self.history) - 1]
+            self.update()
+        else:
+            print('This is the initial state of the board.')
+        
+        print(self)
