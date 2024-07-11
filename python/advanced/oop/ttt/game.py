@@ -60,7 +60,7 @@ class TicTacToe:
     x |   |  
     ---------
     o |   |  
-    >>> game.place_piece(6)
+    >>> game.place_piece(9)
     Invalid space!
     Your move, Player 1
     x | o |  
