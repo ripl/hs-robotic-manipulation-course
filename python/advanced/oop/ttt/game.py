@@ -43,7 +43,7 @@ class TicTacToe:
     x |   |  
     ---------
       |   |  
-    >>> game.place_piece(2, 0)
+    >>> game.place_piece(6)
     Your move, Player 1
     x | o |  
     ---------
@@ -52,7 +52,7 @@ class TicTacToe:
     o |   |  
     >>> game.curr_player_wins()
     False
-    >>> game.place_piece(2, 0)
+    >>> game.place_piece(1)
     Space is occupied!
     Your move, Player 1
     x | o |  
@@ -60,7 +60,7 @@ class TicTacToe:
     x |   |  
     ---------
     o |   |  
-    >>> game.place_piece(3, 1)
+    >>> game.place_piece(6)
     Invalid space!
     Your move, Player 1
     x | o |  
@@ -68,21 +68,21 @@ class TicTacToe:
     x |   |  
     ---------
     o |   |  
-    >>> game.place_piece(1, 1)
+    >>> game.place_piece(4)
     Your move, Player 2
     x | o |  
     ---------
     x | x |  
     ---------
     o |   |  
-    >>> game.place_piece(2, 1)
+    >>> game.place_piece(7)
     Your move, Player 1
     x | o |  
     ---------
     x | x |  
     ---------
     o | o |  
-    >>> game.place_piece(2, 2)
+    >>> game.place_piece(8)
     Player 1 Wins!
     x | o |  
     ---------
@@ -154,14 +154,22 @@ class TicTacToe:
         """
         pass
 
-    def place_piece(self, row, col):
-       """
+    def place_piece(self, pos):
+        """
         Handle updates to the state of the TicTacToe board.
         
-        :param row: The row to place the piece.
-        :param col: The column to place the piece.
+        :param pos: The position on the board.
         """
         pass
+
+    def __getitem__(self, pos):
+        """
+         Allow bracket notation for accessing the board.
+        
+        :param pos: The position on the board.
+        :returns: The value at the given position on the board.
+        """
+        return self.board[index]
 
     def update(self):
         """
