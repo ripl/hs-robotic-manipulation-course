@@ -125,7 +125,7 @@ class TicTacToe:
     o | o | x
     >>> game.determine_draw()
     True
-    game.reset()
+    >>> game.reset()
     Your move, Player 1
       |   |   
     ---------
@@ -184,6 +184,11 @@ class TicTacToe:
         board_str = ''
         
         # Build the board string here. Hint: Use format strings!
+        r1 = f' {self.board[0]} | {self.board[1]} | {self.board[2]} '
+        div = '---------'
+
+        # board_ str += r1 + '\n' div = ....
+        
         
         return board_str
 
