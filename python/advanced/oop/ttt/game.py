@@ -30,108 +30,183 @@ class TicTacToe:
     """
     Represents a TicTacToe game instance.
 
-    Examples:
+    Example 1:
     -----------
 
     >>> p1 = Player('x')
     >>> p2 = Player('o')
-    >>> game = TicTacToe(p1, p2)
-    >>> game.place_piece(0, 0)  # Player 1 places 'x' at (0, 0)
-    x |   |  
-    ---------
-      |   |  
-    ---------
-      |   |  
-    >>> game.place_piece(0, 1)  # Player 2 places 'o' at (0, 1)
-    x | o |  
-    ---------
-      |   |  
-    ---------
-      |   |  
-    >>> game.place_piece(1, 0)  # Player 1 places 'x' at (1, 0)
+    >>> board = ['x', 'o', None, 'x', None, None, None, None, None ]
+    >>> game = TicTacToe(p1, p2, board)
+    Your move, Player 2
     x | o |  
     ---------
     x |   |  
     ---------
       |   |  
-    >>> game.place_piece(1, 1)  # Player 2 places 'o' at (1, 1)
-    x | o |  
-    ---------
-    x | o |  
-    ---------
-      |   |  
-    >>> game.place_piece(2, 0)  # Player 1 places 'x' at (2, 0)
-    x | o |  
-    ---------
+    >>> game.place_piece(2, 0)
+    Your move, Player 1
     x | o |  
     ---------
     x |   |  
-    >>> game.place_piece(2, 2)  # Player 2 places 'o' at (2, 2)
+    ---------
+    o |   |  
+    >>> game.curr_player_wins()
+    False
+    >>> game.place_piece(2, 0)
+    Space is occupied!
+    Your move, Player 1
     x | o |  
     ---------
+    x |   |  
+    ---------
+    o |   |  
+    >>> game.place_piece(3, 1)
+    Invalid space!
+    Your move, Player 1
     x | o |  
     ---------
-    x |   | o
-    Player o wins!
+    x |   |  
+    ---------
+    o |   |  
+    >>> game.place_piece(1, 1)
+    Your move, Player 2
+    x | o |  
+    ---------
+    x | x |  
+    ---------
+    o |   |  
+    >>> game.place_piece(2, 1)
+    Your move, Player 1
+    x | o |  
+    ---------
+    x | x |  
+    ---------
+    o | o |  
+    >>> game.place_piece(2, 2)
+    Player 1 Wins!
+    x | o |  
+    ---------
+    x | x |  
+    ---------
+    o | o | x 
+    >>> game.get_winner()
+    'x'
     """
-    def __init__(self, player1, player2):
+    def __init__(self, player1, player2, board=None):
         """
-        Create an instance of TicTacToe
-        """
-        self.board = [None] * 9
+        Create an instance of TicTacToe.
         
-        # Player 1 is always first
-        self.curr_turn = player1.piece
+        :param player1: The first player.
+        :param player2: The second player.
+        :param board: Optional initial board state.
+        """
         self.p1 = player1
         self.p2 = player2
+        
+        if board is None:
+            self.board = [None] * 9
+            # Player 1 is always first
+            self.curr_turn = player1.piece
+        else:
+            self.board = board
+            # Determine which Players turn it is
+            x_count = board.count('x')
+            o_count = board.count('o')
 
+            if x_count > o_count:
+                self.curr_turn = player2.piece
+            else:
+                self.curr_turn = player1.piece
+
+        # Record the current state of the board.
+        self.history = [self.board.copy()]
+                
+        # Display board and current player's turn.
+        print(self)
+
+    def current_player(self):
+        """
+        Return the current player's piece.
+        
+        :returns: The piece of the current player.
+        """
+        pass
+        
     def __repr__(self):
         """
-        Draw the current state of the TicTacToe board. 
+        Draw the current state of the TicTacToe board.
+        
+        :returns: The string representation of the board.
         """
-        def format_piece(piece):
-            return piece if piece is not None else ' '
-
-        board_str = "\n".join([
-            f"{format_piece(self.board[0])} | {format_piece(self.board[1])} | {format_piece(self.board[2])}",
-            "---------",
-            f"{format_piece(self.board[3])} | {format_piece(self.board[4])} | {format_piece(self.board[5])}",
-            "---------",
-            f"{format_piece(self.board[6])} | {format_piece(self.board[7])} | {format_piece(self.board[8])}"
-        ])
+        board_str = ''
+        
+        # Build the board string here. Hint: Use format strings!
+        
         return board_str
 
-    def place_piece(self, row, col):
+    def is_valid_move(self, row, col):
         """
-        Handle updates to the state of the TicTacToe board.
+        Determine if the given coordinates are a valid move.
+        
+        :param row: The row of the move.
+        :param col: The column of the move.
+        :returns: True if the move is valid, False otherwise.
+        """
+        pass
 
-        Possible outputs:
-            1) This spot is already taken. Please choose another spot.
-            2) Player x wins!
-            3) Player o wins!
-            4) This game is a draw!
+    def place_piece(self, row, col):
+       """
+        Handle updates to the state of the TicTacToe board.
+        
+        :param row: The row to place the piece.
+        :param col: The column to place the piece.
         """
         pass
 
     def update(self):
         """
-        Update the current turn of the player in the game.
-
-        Hint: You will need self.curr_turn and self.p1, self.p2 objects
+        Update the current turn of the player in the game ('x' or 'o').
         """
         pass
 
     def curr_player_wins(self):
         """
         Checks to see if the current player has a winning triple.
+        
+        :returns: True if the current player has won, False otherwise.
         """
-        horizontal_triples = [(0, 1, 2), (3, 4, 5), (6, 7, 8)]
-        vertical_triples = [(0, 3, 6), (1, 4, 7), (2, 5, 8)]
-        diagonal_triples = [(0, 4, 8), (2, 4, 6)]
+        winning_triples = [
+            (0, 1, 2), (3, 4, 5), (6, 7, 8),  # horizontal
+            (0, 3, 6), (1, 4, 7), (2, 5, 8),  # vertical
+            (0, 4, 8), (2, 4, 6)              # diagonal
+        ]
+        pass
+
+    def get_winner(self):
+        """
+        Return the winner if there is one.
+        
+        :returns: The piece of the winner, or None if there is no winner.
+        """
         pass
 
     def determine_draw(self):
         """
         Determine if there are no moves left on the board, resulting in a draw.
+        
+        :returns: True if the game is a draw, False otherwise.
+        """
+        pass
+
+    def reset_game(self):
+        """
+        Reset the game to its initial state (an empty board).
+        """
+        pass
+    
+    def step_back(self):
+        """
+        Revert to the previous state of the game. 
+        Hint: Use, self.history
         """
         pass
