@@ -121,8 +121,8 @@ def record_position_with_leader(arm, lead, action, pose_type):
     thread.start()
      # Teleoperation
     while not stop.is_set():
-        pos = lead.read_position()
-        arm.set_goal_pos(pos)
+        positions = lead.read_position()
+        arm.set_goal_pos(positions)
     thread.join()
     # Record position
     positions = [int(p) for p in positions]
@@ -354,7 +354,7 @@ def main():
                 print('2) Enter "a" to use a saved action')
                 print('3) Enter "g" to go to a specific pose within an action.')
                 print('4) Enter "m" to manually position the robot. Be warned, the reading is not accurate.')
-                print('5) Enter "r" at any time to record new action.')
+                print('5) Enter "r" at to record new action.')
                 print('6) Enter "t" to test the margin of error of an action.')
                 print('7) Enter "q" at any time to quit.\n')
                 user_input = input('Enter task: ').lower()
