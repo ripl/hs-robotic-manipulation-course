@@ -101,7 +101,7 @@ class TicTacToe:
     o | o | x 
     >>> game.get_winner()
     'x'
-    >>> game.step_back()
+    >>> game.undo()
     Your move, Player 1.
     x | o |  
     ---------
@@ -140,7 +140,7 @@ class TicTacToe:
       |   |   
     ---------
       |   |  
-    >>> game.step_back()
+    >>> game.undo()
     This is the initial state of the board.
     """
     def __init__(self, player1, player2, board=None):
