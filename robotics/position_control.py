@@ -409,11 +409,17 @@ def main():
             print_joint_angles(arm)
             if args.leader:
                 print("You have entered Teleoperation mode. You can use the leader arm to position your Robotic Arm.")
-                action = input("Enter an action name: ")
+                action = input("Enter an action name to record: ")
                 for pose_type in VALID_POSE_TYPES:
                     positions = record_position_with_leader(arm, lead, action, pose_type)
                     actions = load_json_file(ACTIONS_FILE) or {}
                     update_action(actions, action, pose_type, positions)
+                    
+                user_input = input("Would you like to exit Teleoperation mode? [Y/n]").lower()
+                if user_input == 'y':
+                    print("Exiting Teleoperation Position Control...")
+                    print("Goodbye!")
+                    proceed = False
             else:
                 print('1) Enter "p" to position a specific motor.')
                 print('2) Enter "a" to use a saved action.')
