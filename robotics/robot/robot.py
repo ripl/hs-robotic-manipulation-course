@@ -2,7 +2,7 @@ import time
 import numpy as np
 from typing import Union
 from enum import Enum, auto
-from robot.dynamixel import Dynamixel, OperatingMode, ReadAttribute
+from robotics.robot.dynamixel import Dynamixel, OperatingMode, ReadAttribute
 from dynamixel_sdk import GroupSyncRead, GroupSyncWrite, DXL_LOBYTE, DXL_HIBYTE, DXL_LOWORD, DXL_HIWORD
 
 class MotorControlType(Enum):

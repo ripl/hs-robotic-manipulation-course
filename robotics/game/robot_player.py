@@ -1,5 +1,5 @@
 import json
-from robot.robot import Robot
+from robotics.robot.robot import Robot
 
 # Load robot settings
 with open('../config.json') as f:
