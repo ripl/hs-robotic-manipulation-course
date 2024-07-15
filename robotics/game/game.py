@@ -312,7 +312,7 @@ class TicTacToe:
         print("The game has been reset to its initial state.")
         print(self)
 
-    def step_back(self):
+    def undo(self):
         """
         Revert to the previous state of the game.
         """
