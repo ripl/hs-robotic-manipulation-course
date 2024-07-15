@@ -1,7 +1,3 @@
-"""
-TODO: Modify the Player/TicTacToe Instances to be compatiable to the Robot Arm.
-"""
-
 class Player:
     """
     Represents a player in a TicTacToe instance.
