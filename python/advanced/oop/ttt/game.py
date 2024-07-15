@@ -165,9 +165,9 @@ class TicTacToe:
             p2_count = board.count(self.p2.piece)
 
             if p1_count > p2_count:
-                self.curr_turn = self.p1.piece
-            else:
                 self.curr_turn = self.p2.piece
+            else:
+                self.curr_turn = self.p1.piece
 
         # Record the current state of the board.
         self.history = [self.board.copy()]
@@ -294,11 +294,22 @@ class TicTacToe:
 
     def reset(self):
         """
-        Reset the game to its initial state.
+        Reset the game to an empty board. This will create a new initial state.
         """
         self.board = [None] * 9
         self.history = [self.board.copy()]
         self.curr_turn = self.p1.piece
+        print("The game has been reset to an empty board.")
+        print(self)
+
+    def initial(self):
+        """
+        Reset the game to its initial state.
+        """
+        self.board = self.history[0].copy()
+        self.history = [self.board.copy()]
+        self.curr_turn = self.p2.piece if self.board.count(self.p1.piece) > self.board.count(self.p2.piece) else self.p1.piece
+        print("The game has been reset to its initial state.")
         print(self)
 
     def step_back(self):
