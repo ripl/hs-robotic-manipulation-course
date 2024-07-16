@@ -1,3 +1,6 @@
+import json
+from robotics.robot.robot import Robot
+
 class Player:
     """
     Represents a player in a TicTacToe instance.
@@ -33,6 +36,81 @@ class Player:
     def __repr__(self):
         return f'Player {self.count} is "{self.piece}"'
 
+
+class Arm(Player):
+    """
+    Represents a Robotic arm in a TicTacToe instance.
+
+    Examples:
+    -----------
+
+    >>> p1 = Player('x')
+    >>> p2 = Arm('o') 
+    >>> p1
+    Player 1 is "x"
+    >>> p2
+    ArmPlayer 2 is "o"
+    >>> p2.move_piece("A", 0)
+    Moved piece from A to 0.
+    """
+    def __init__(self, piece, config_path='../config.json', positions_path='../actions.json'):
+        """
+        Create an Arm instance, inherit from the Player class.
+
+        :param piece: The piece assigned to the Arm player (e.g., 'x' or 'o').
+        :param config_path: Path to the configuration file for the robotic arm.
+        :param positions_path: Path to the file containing actions or positions.
+        """
+        super().__init__(piece)
+
+        # Load robot settings
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+            self.arm_config = config['arm']
+
+        # Load game positions
+        with open(positions_path, 'r') as f:
+            self.positions = json.load(f)
+
+        # Initialize the robotic arm with the loaded configuration
+        self.arm = Robot(device_name=self.arm_config['device_name'], 
+                         servo_ids=self.arm_config['servo_ids'],
+                         velocity_limit=self.arm_config['velocity_limit'],
+                         max_position_limit=self.arm_config['max_position_limit'],
+                         min_position_limit=self.arm_config['min_position_limit'])
+
+        # Move the arm to the home start position
+        self.arm.set_and_wait_goal_pos(self.arm_config['home_pos'])
+
+        # NOTE: This list will represnt the available "start" pieces.
+        self.pieces = ["A", "B", "C", "D", "E", "F"]
+
+    def __repr__(self):
+        return f'ArmPlayer {self.count} is "{self.piece}"'
+    
+    def move_piece(self, start, end):
+        """
+        Move a piece from start to end position on the physical board.
+
+        This method will use the robotic arm to pick up a piece from the 
+        specified start position and place it at the specified end position.
+
+        :param start: The start position on the physical board.
+        :param end: The end position on the physical board.
+        """
+        pass
+
+    def clean_board(self, curr_board):
+        """
+        Reset the board by moving pieces back to their start positions.
+
+        This method finds the pieces that belong to the robotic arm on the 
+        board and moves them back to their designated start positions.
+
+        :param curr_board: The current state of the board to be reset.
+        """
+        start_positions = ["A", "B", "C", "D", "E", "F"]
+        pass
 
 class TicTacToe:
     """
@@ -240,7 +318,10 @@ class TicTacToe:
         if self.is_valid_move(pos):
             self.board[pos] = self.current_player()
             self.history.append(self.board.copy())
-        
+
+            # If the Player is the Arm, play on the board
+            self.arm_move(pos)
+
         if not self.curr_player_wins():
             self.update()
         
@@ -296,6 +377,14 @@ class TicTacToe:
         """
         Reset the game to an empty board. This will create a new initial state.
         """
+        # If the board is reset and an Arm is one of the players,
+        # the robotic arm should clean up it's own pieces.
+        curr_board = self.history[-1].copy()
+        if isinstance(self.p1, Arm):
+            self.p1.clean_board(curr_board)
+        elif isinstance(self.p2, Arm):
+            self.p1.clean_board(curr_board)
+
         self.board = [None] * 9
         self.history = [self.board.copy()]
         self.curr_turn = self.p1.piece
@@ -324,3 +413,28 @@ class TicTacToe:
             print('This is the initial state of the board.')
         
         print(self)
+
+    def curr_player_obj(self):
+        """
+        Return the current Player object.
+
+        This method determines the current player based on the game state 
+        and returns the corresponding Player or Arm object.
+
+        :returns: The current Player object (self.p1 or self.p2).
+        """
+        pass
+
+    def arm_move(self, pos):
+        """
+        Execute a move using the robotic arm if the current player is an Arm.
+
+        This method checks if the current player is an Arm and, if so, 
+        commands the robotic arm to move a piece to the specified position 
+        on the physical board.
+
+        :param pos: The position on the physical board where the piece should be moved.
+        """
+        obj = self.curr_player_obj()
+        if isinstance(obj, Arm):
+            pass
