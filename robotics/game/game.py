@@ -1,5 +1,5 @@
 import json
-from random import randint
+import random
 from robotics.robot.robot import Robot
 
 class Player:
@@ -452,7 +452,7 @@ class TicTacToe:
 
         :param pos: The position on the physical board where the piece should be moved.
         """
-        indx = randint(0, len(current_player.pieces) - 1)
+        indx = random.randint(0, len(current_player.pieces) - 1)
         piece = current_player.pieces.pop(indx)
         current_player.used_pieces.append(piece)
         current_player.move_piece(piece, str(pos))     
