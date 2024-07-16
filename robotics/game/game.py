@@ -1,4 +1,5 @@
 import json
+from random import randint
 from robotics.robot.robot import Robot
 
 class Player:
@@ -32,6 +33,9 @@ class Player:
         self.piece = piece
         Player.player_count += 1
         self.count = Player.player_count
+
+    def __del__(self):
+        Player.player_count -= 1
 
     def __repr__(self):
         return f'Player {self.count} is "{self.piece}"'
@@ -85,6 +89,8 @@ class Arm(Player):
         # NOTE: This list will represnt the available "start" pieces.
         self.pieces = ["A", "B", "C", "D", "E", "F"]
 
+        self.used_pieces = []
+
     def __repr__(self):
         return f'ArmPlayer {self.count} is "{self.piece}"'
     
@@ -98,7 +104,15 @@ class Arm(Player):
         :param start: The start position on the physical board.
         :param end: The end position on the physical board.
         """
-        pass
+        valid_poses = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
+
+        for pose in valid_poses:
+            self.arm.set_and_wait_goal_pos(self.positions[start][pose])
+
+        for pose in reversed(valid_poses):
+            self.arm.set_and_wait_goal_pos(self.positions[end][pose])
+
+        self.arm.set_and_wait_goal_pos(self.arm_config["home_pos"])
 
     def clean_board(self, curr_board):
         """
@@ -109,7 +123,9 @@ class Arm(Player):
 
         :param curr_board: The current state of the board to be reset.
         """
-        pass
+        for space in range(len(curr_board)):
+            if curr_board[space] == self.piece:
+                self.move_piece(str(space), self.used_pieces.pop())
 
 class TicTacToe:
     """
@@ -318,8 +334,9 @@ class TicTacToe:
             self.board[pos] = self.current_player()
             self.history.append(self.board.copy())
 
-            # If the Player is the Arm, play on the board
-            self.arm_move(pos)
+            current_player = self.curr_player_obj()
+            if isinstance(current_player, Arm)
+                self.arm_move(pos, current_player)
 
         if not self.curr_player_wins():
             self.update()
@@ -382,11 +399,12 @@ class TicTacToe:
         if isinstance(self.p1, Arm):
             self.p1.clean_board(curr_board)
         elif isinstance(self.p2, Arm):
-            self.p1.clean_board(curr_board)
+            self.p2.clean_board(curr_board)
 
         self.board = [None] * 9
         self.history = [self.board.copy()]
         self.curr_turn = self.p1.piece
+
         print("The game has been reset to an empty board.")
         print(self)
 
@@ -396,7 +414,7 @@ class TicTacToe:
         """
         self.board = self.history[0].copy()
         self.history = [self.board.copy()]
-        self.curr_turn = self.p2.piece if self.board.count(self.p1.piece) > self.board.count(self.p2.piece) else self.p1.piece
+        self.curr_turn = self.p1.piece if self.board.count(self.p1.piece) <= self.board.count(self.p2.piece) else self.p2.piece
         print("The game has been reset to its initial state.")
         print(self)
 
@@ -422,9 +440,9 @@ class TicTacToe:
 
         :returns: The current Player object (self.p1 or self.p2).
         """
-        pass
+        return self.p1 if self.curr_turn == self.p1.piece else self.p2
 
-    def arm_move(self, pos):
+    def arm_move(self, pos, current_player):
         """
         Execute a move using the robotic arm if the current player is an Arm.
 
@@ -434,6 +452,7 @@ class TicTacToe:
 
         :param pos: The position on the physical board where the piece should be moved.
         """
-        obj = self.curr_player_obj()
-        if isinstance(obj, Arm):
-            pass
+        indx = randint(0, len(current_player.pieces) - 1)
+        piece = current_player.pieces.pop(indx)
+        current_player.used_pieces.append(piece)
+        current_player.move_piece(piece, str(pos))     

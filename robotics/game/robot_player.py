@@ -22,11 +22,22 @@ arm.set_and_wait_goal_pos(arm_config['home_pos'])
 
 # Write this function!
 def move_piece(start, end):
-    ''' Move a piece from start to end position. 
+    ''' 
+    Move a piece from start to end position. 
     '''
-    pass
+    arm.set_and_wait_goal_pos(positions[start]['hover'])
+    arm.set_and_wait_goal_pos(positions[start]['pre-grasp'])
+    arm.set_and_wait_goal_pos(positions[start]['grasp'])
+    arm.set_and_wait_goal_pos(positions[start]['post-grasp'])
+    arm.set_and_wait_goal_pos(positions[end]['post-grasp'])
+    arm.set_and_wait_goal_pos(positions[end]['grasp'])
+    arm.set_and_wait_goal_pos(positions[end]['pre-grasp'])
+    arm.set_and_wait_goal_pos(positions[end]['hover'])
+    arm.set_and_wait_goal_pos(arm_config["home_pos"])
 
 # Hard code a sample move to see if your code works!
+move_piece("A", 0)
+
 
 # Go to home position and disable torque
 arm.set_and_wait_goal_pos(arm_config['rest_pos'])
