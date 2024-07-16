@@ -86,7 +86,7 @@ class Arm(Player):
         # Move the arm to the home start position
         self.arm.set_and_wait_goal_pos(self.arm_config['home_pos'])
 
-        # NOTE: This list will represnt the available "start" pieces.
+        # NOTE: This list will represent the available "start" pieces.
         self.pieces = ["A", "B", "C", "D", "E", "F"]
 
         self.used_pieces = []
@@ -126,6 +126,7 @@ class Arm(Player):
         for space in range(len(curr_board)):
             if curr_board[space] == self.piece:
                 self.move_piece(str(space), self.used_pieces.pop())
+
 
 class TicTacToe:
     """
@@ -200,7 +201,7 @@ class TicTacToe:
     ---------
     x | x |  
     ---------
-    o | o |  
+    o |   |  
     >>> game.place_piece(2)
     Your move, Player 2.
     x | o | x 
@@ -253,7 +254,7 @@ class TicTacToe:
             self.curr_turn = player1.piece
         else:
             self.board = board
-            # Determine which Players turn it is
+            # Determine which Player's turn it is
             p1_count = board.count(self.p1.piece)
             p2_count = board.count(self.p2.piece)
 
@@ -335,7 +336,7 @@ class TicTacToe:
             self.history.append(self.board.copy())
 
             current_player = self.curr_player_obj()
-            if isinstance(current_player, Arm)
+            if isinstance(current_player, Arm):
                 self.arm_move(pos, current_player)
 
         if not self.curr_player_wins():
@@ -394,7 +395,7 @@ class TicTacToe:
         Reset the game to an empty board. This will create a new initial state.
         """
         # If the board is reset and an Arm is one of the players,
-        # the robotic arm should clean up it's own pieces.
+        # the robotic arm should clean up its own pieces.
         curr_board = self.history[-1].copy()
         if isinstance(self.p1, Arm):
             self.p1.clean_board(curr_board)
@@ -455,4 +456,4 @@ class TicTacToe:
         indx = random.randint(0, len(current_player.pieces) - 1)
         piece = current_player.pieces.pop(indx)
         current_player.used_pieces.append(piece)
-        current_player.move_piece(piece, str(pos))     
+        current_player.move_piece(piece, str(pos))
