@@ -109,7 +109,6 @@ class Arm(Player):
 
         :param curr_board: The current state of the board to be reset.
         """
-        end_positions = ["A", "B", "C", "D", "E", "F"]
         pass
 
 class TicTacToe:
