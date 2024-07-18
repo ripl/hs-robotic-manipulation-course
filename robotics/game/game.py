@@ -1,4 +1,4 @@
-import random
+import random, os
 from robotics.robot.robot import Robot
 from players import Player, Arm, SmartArm
 
@@ -26,7 +26,7 @@ class TicTacToe:
     x |   |  
     ---------
     o |   |  
-    >>> game.curr_player_wins()
+    >>> game.current_player_wins()
     False
     >>> game.place_piece(1)
     Space is occupied!
@@ -162,17 +162,17 @@ class TicTacToe:
         def piece(space):
             return ' ' if space is None else space
         
-        if self.current_player() == self.p1.piece:
-            player = self.p1.count
-        else:
-            player = self.p2.count
+        # if self.current_player() == self.p1.piece:
+        #     player = self.p1.count
+        # else:
+        #     player = self.p2.count
 
-        if self.curr_player_wins():
-            board_str += f'Player {player} Wins!'
-        elif self.determine_draw():
-            board_str += 'Cat Game!'
-        else:
-            board_str += f'Your move, Player {player}.'
+        # if self.current_player_wins():
+        #     board_str += f'Player {player} Wins!'
+        # elif self.determine_draw():
+        #     board_str += 'Cat Game!'
+        # else:
+        #     board_str += f'Your move, Player {player}.'
 
         board_str += '\n'
         board_str += f'{piece(self.board[0])} | {piece(self.board[1])} | {piece(self.board[2])}\n'
@@ -209,14 +209,14 @@ class TicTacToe:
             self.board[pos] = self.current_player()
             self.history.append(self.board.copy())
 
-            current_player = self.curr_player_obj()
+            current_player = self.current_player_obj()
             if isinstance(current_player, Arm):
                 self.arm_move(pos, current_player)            
 
-        if not self.curr_player_wins():
+        if not self.current_player_wins():
             self.update()
 
-            next_player = self.curr_player_obj()
+            next_player = self.current_player_obj()
             if isinstance(next_player, SmartArm):   
                 next_player.play(self)
         
@@ -231,8 +231,8 @@ class TicTacToe:
         else:
             self.curr_turn = self.p1.piece
 
-    def curr_player_wins(self):
-        """
+    def current_player_wins(self):
+        """String representation of the winner,
         Checks to see if the current player has a winning triple.
         
         :returns: True if the current player has won, False otherwise.
@@ -244,7 +244,7 @@ class TicTacToe:
         ]
         for x, y, z in winning_triples:
             if self.board[x] is not None and self.board[x] == self.board[y] == self.board[z]:
-                
+
                 return True
         return False
 
@@ -252,9 +252,9 @@ class TicTacToe:
         """
         Return the winner if there is one.
         
-        :returns: The piece of the winner, or None if there is no winner.
+        :returns: 'Player 1', 'Player 2' or 'Undecided'
         """
-        if self.curr_player_wins():
+        if self.current_player_wins():
             return self.current_player()
         return None
 
@@ -286,7 +286,6 @@ class TicTacToe:
         self.curr_turn = self.p1.piece
 
         print("The game has been reset to an empty board.")
-        print(self)
 
     def initial(self):
         """
@@ -311,7 +310,7 @@ class TicTacToe:
         
         print(self)
 
-    def curr_player_obj(self):
+    def current_player_obj(self):
         """
         Return the current Player object.
 
@@ -336,3 +335,33 @@ class TicTacToe:
         piece = current_player.pieces.pop(indx)
         current_player.used_pieces.append(piece)
         current_player.move_piece(piece, str(pos))
+
+if __name__ == '__main__':
+
+    p1 = Player('x')
+    p2 = SmartArm('o', 2)
+    game = TicTacToe(p1, p2)
+
+    os.system('clear')
+
+    print("Welcome to TicTacToe. You are Player 1. Player 2 is the Smart Arm.")
+    print("Enter a position (0-8) to place your piece. \nThe SmartArm will play automatically.")
+    print("Enter 'q' at any time to quit.")
+    print()
+
+    while True:
+        try:
+            user_input = input("Enter the position: ")
+            if user_input.lower() == 'q':
+                print("Quitting the game.")
+                break
+            pos = int(user_input)
+            game.place_piece(pos)
+        except ValueError:
+            print("Invalid input. Please enter a number between 0 and 8 or 'q' to quit.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            
+    # game.reset()
+    p2.arm.set_and_wait_goal_pos([2048, 1600, 1070, 2200, 2048, 2048])
+    p2.arm._disable_torque()
