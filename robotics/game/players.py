@@ -53,8 +53,6 @@ class Arm(Player):
     Player 1 is "x"
     >>> p2
     ArmPlayer 2 is "o"
-    >>> p2.move_piece("A", 0)
-    Moved piece from A to 0.
     """
     def __init__(self, piece, config_path='../config.json', positions_path='../actions.json'):
         """
@@ -126,7 +124,6 @@ class Arm(Player):
             if curr_board[space] == self.piece:
                 self.move_piece(str(space), self.used_pieces.pop())
 
-
 class SmartArm(Arm):
     """
     Represents a Robotic Arm which can play on the board on its own.
@@ -161,17 +158,88 @@ class SmartArm(Arm):
     def novice(self, game):
         """
         Randomly place a piece on the board.
+
+        :param game: The current game instance.
         """
         pass
 
     def pro(self, game):
         """
         Either place a piece to win, to block the opponent, or randomly.
+
+        :param game: The current game instance.
         """
+        winning_triples = [
+            (0, 1, 2), (3, 4, 5), (6, 7, 8),  # horizontal
+            (0, 3, 6), (1, 4, 7), (2, 5, 8),  # vertical
+            (0, 4, 8), (2, 4, 6)              # diagonal
+        ]
         pass
+
+    def minimax(self, game, depth, is_maximizing):
+        """
+        Implement the minimax algorithm to determine the best move for the AI.
+
+        :param game: The current game instance.
+        :param depth: The current depth in the game tree.
+        :param is_maximizing: A boolean indicating if the current player is the maximizing player.
+        :return: The optimal move score for the current board state.
+        """
+        # Evaluate the current state of the game
+        score = self.evaluate_board(game)
+        if score is not None:
+            return score
+
+        if is_maximizing:
+            best_score = float('-inf')
+            for pos in range(9):
+                if game.is_valid_move(pos):
+                    game.place_piece(pos, self.piece)
+                    best_score = max(best_score, self.minimax(game, depth + 1, False))
+                    game.remove_piece(pos)
+            return best_score
+        else:
+            best_score = float('inf')
+            opponent_piece = game.p1.piece if self.piece == game.p2.piece else game.p2.piece
+            for pos in range(9):
+                if game.is_valid_move(pos):
+                    game.place_piece(pos, opponent_piece)
+                    best_score = min(best_score, self.minimax(game, depth + 1, True))
+                    game.remove_piece(pos)
+            return best_score
+
+    def evaluate_board(self, game):
+        """
+        Evaluate the board state and return a score if the game has ended.
+
+        :param game: The current game instance.
+        :return: A score representing the board evaluation (1 for win, -1 for loss, 0 for draw, None if the game is ongoing).
+        """
+        winner = game.check_winner()
+        if winner == self.piece:
+            return 1
+        elif winner == (game.p1.piece if self.piece == game.p2.piece else game.p2.piece):
+            return -1
+        elif game.is_draw():
+            return 0
+        return None
 
     def expert(self, game):
         """
-        Always play the optimal move
+        Determine the best move for the SmartArm using the minimax algorithm.
+
+        :param game: The current game instance.
         """
-        pass    
+        best_score = float('-inf')
+        best_move = None
+        for pos in range(9):
+            if game.is_valid_move(pos):
+                game.place_piece(pos, self.piece)
+                move_score = self.minimax(game, 0, False)
+                game.remove_piece(pos)
+                if move_score > best_score:
+                    best_score = move_score
+                    best_move = pos
+
+        if best_move is not None:
+            game.place_piece(best_move)
