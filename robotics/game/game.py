@@ -1,4 +1,4 @@
-import random, os
+import random, os, sys
 from robotics.robot.robot import Robot
 from players import Player, Arm, SmartArm
 
@@ -338,6 +338,9 @@ class TicTacToe:
 
 if __name__ == '__main__':
 
+    if sys.argv[1] is not None:
+        lvl = sys.argv[1]
+        
     p1 = Player('x')
     p2 = SmartArm('o', 2)
     game = TicTacToe(p1, p2)
