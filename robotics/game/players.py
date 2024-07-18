@@ -390,25 +390,34 @@ class SmartArm(Arm):
         ]
         pass
 
-    def minimax(self, is_max_turn, maximizer_mark, game):
+    def minimax(self, is_max_turn, maximizer_mark, game, depth):
         """
         Implement the minimax algorithm to determine the best move for the AI.
+
+        NOTE: This algorithms assumes that the SmartArm is always player 2.
 
         :param is_max_turn: A boolean indicating if the current player is the maximizing player.
         :param maximizer_mark: The mark of the maximizing player ('x' or 'o').
         :param game: The current game instance.
+        :param depth: The depth of the current call.
         :return: The optimal move score for the current board state.
         """
-        if game.determine_draw():
+        if game.get_winner() == game.p1.piece:
+            return 10 - depth
+        elif game.get_winner() == game.p2.piece:
+            return depth - 10
+        elif game.determine_draw():
             return 0
-        elif game.get_winner() is not None:
-            return 1 if game.get_winner() is maximizer_mark else -1
+        
+        depth += 1
 
         scores = []
         for pos in self.get_possible_moves(game):
             self.place_piece(game, pos, maximizer_mark)
-            scores.append(self.minimax(not is_max_turn, game.p1.piece if is_max_turn else game.p2.piece , game))
+            game.update()
+            scores.append(self.minimax(not is_max_turn, game.p1.piece if is_max_turn else game.p2.piece , game, depth))
             self.undo(game, pos)
+            game.update()
 
         return max(scores) if is_max_turn else min(scores)
 
@@ -423,10 +432,11 @@ class SmartArm(Arm):
         possible_moves = self.get_possible_moves(game)
         random.shuffle(possible_moves)
         for pos in possible_moves:
-            print(f"Evaluting position {pos}")
             self.place_piece(game, pos, self.piece)
-            score = self.minimax(False, game.p1.piece, game)
+            game.update()
+            score = self.minimax(False, game.p1.piece, game, 0)
             self.undo(game, pos)
+            game.update()
             if score > best_score:
                 print('New Best Move')
                 best_score = score
