@@ -193,7 +193,7 @@ class SmartArm(Arm):
         if is_maximizing:
             best_score = float('-inf')
             for pos in range(9):
-                if game.is_valid_move(pos):
+                if self.is_valid_move(game, pos):
                     self.place_piece(game, pos, self.piece)
                     best_score = max(best_score, self.minimax(game, depth + 1, False))
                     self.undo(game, pos)
@@ -202,7 +202,7 @@ class SmartArm(Arm):
             best_score = float('inf')
             opponent_piece = game.p1.piece if self.piece == game.p2.piece else game.p2.piece
             for pos in range(9):
-                if game.is_valid_move(pos):
+                if self.is_valid_move(game, pos):
                     self.place_piece(game, pos, opponent_piece)
                     best_score = min(best_score, self.minimax(game, depth + 1, True))
                     self.undo(game, pos)
@@ -228,12 +228,15 @@ class SmartArm(Arm):
         """
         Determine the best move for the AI using the minimax algorithm.
 
-        :param game: The current game instance.
+        :param game: The if not 0 <= pos < 9:
+            print('Invalid space!')
+            return False
+        elifcurrent game instance.
         """
         best_score = float('-inf')
         best_move = None
         for pos in range(9):
-            if game.is_valid_move(pos):
+            if self.is_valid_move(game, pos):
                 self.place_piece(game, pos, self.piece)
                 move_score = self.minimax(game, 0, False)
                 self.undo(game, pos)
@@ -242,7 +245,7 @@ class SmartArm(Arm):
                     best_move = pos
 
         if best_move is not None:
-            self.place_piece(game, best_move, self.piece)
+            game.place_piece(best_move)
 
     def place_piece(self, game, pos, piece):
         """
@@ -262,3 +265,15 @@ class SmartArm(Arm):
         :param pos: The position on the board to clear.
         """
         game.board[pos] = None
+
+    def is_valid_move(self, game, pos):
+        """
+        Determine if the pos is valid move.
+
+        :param game: The current game instance.
+        :param pos: The position on the board to clear.
+        """
+        if game.board[pos] is not None:
+            return False
+        else:
+            return True 

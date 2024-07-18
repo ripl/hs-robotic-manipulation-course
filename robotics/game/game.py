@@ -244,6 +244,7 @@ class TicTacToe:
         ]
         for x, y, z in winning_triples:
             if self.board[x] is not None and self.board[x] == self.board[y] == self.board[z]:
+                
                 return True
         return False
 
