@@ -130,6 +130,13 @@ class Arm(Player):
 class SmartArm(Arm):
     """
     Represents a Robotic Arm which can play on the board on its own.
+
+    >>> p1 = Player('x')
+    >>> p2 = Arm('o') 
+    >>> p1
+    Player 1 is "x"
+    >>> p2
+    SmartArmPlayer 2 is "o"
     """
 
     def __init__(self, piece, lvl = 0):
@@ -149,7 +156,7 @@ class SmartArm(Arm):
             self.play = self.expert
 
     def __repr__(self):
-        return f'SmartArm {self.count} is "{self.piece}"'
+        return f'SmartArmPlayer {self.count} is "{self.piece}"'
     
     def novice(self, game):
         """
@@ -167,4 +174,4 @@ class SmartArm(Arm):
         """
         Always play the optimal move
         """
-        pass   
+        pass    
