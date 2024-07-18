@@ -93,7 +93,7 @@ class TicTacToe:
     ---------
     o | o | 
     >>> game.place_piece(8)
-    Cat Game!
+    Draw!
     x | o | x 
     ---------
     x | x | o 
@@ -162,17 +162,17 @@ class TicTacToe:
         def piece(space):
             return ' ' if space is None else space
         
-        # if self.current_player() == self.p1.piece:
-        #     player = self.p1.count
-        # else:
-        #     player = self.p2.count
+        if self.current_player() == self.p1.piece:
+            player = self.p1.count
+        else:
+            player = self.p2.count
 
-        # if self.current_player_wins():
-        #     board_str += f'Player {player} Wins!'
-        # elif self.determine_draw():
-        #     board_str += 'Cat Game!'
-        # else:
-        #     board_str += f'Your move, Player {player}.'
+        if self.current_player_wins():
+            board_str += f'Player {player} Wins!'
+        elif self.determine_draw():
+            board_str += 'Draw!'
+        else:
+            board_str += f'Your move, Player {player}.'
 
         board_str += '\n'
         board_str += f'{piece(self.board[0])} | {piece(self.board[1])} | {piece(self.board[2])}\n'
@@ -338,18 +338,23 @@ class TicTacToe:
 
 if __name__ == '__main__':
 
-    if sys.argv[1] is not None:
-        lvl = sys.argv[1]
-        
+    print("Welcome to TicTacToe. \nYou are Player 1. \nPlayer 2 is the Smart Arm.\n")
+    print("AI difficulty: ")
+    print("   Novice  (1)")
+    print("   Pro     (2)")
+    print("   Exprert (3)")
+    lvl = int(input("\nChoose Wisley: ").strip())
+
     p1 = Player('x')
-    p2 = SmartArm('o', 2)
+    p2 = SmartArm('o', lvl)
     game = TicTacToe(p1, p2)
 
     os.system('clear')
 
-    print("Welcome to TicTacToe. You are Player 1. Player 2 is the Smart Arm.")
+    print(p1)
+    print(p2)
     print("Enter a position (0-8) to place your piece. \nThe SmartArm will play automatically.")
-    print("Enter 'q' at any time to quit.")
+    print("Enter 'q' at any time to quit. Press Enter to start the game.")
     print()
 
     while True:
