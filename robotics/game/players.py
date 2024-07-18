@@ -194,18 +194,18 @@ class SmartArm(Arm):
             best_score = float('-inf')
             for pos in range(9):
                 if game.is_valid_move(pos):
-                    game.place_piece(pos, self.piece)
+                    self.place_piece(game, pos, self.piece)
                     best_score = max(best_score, self.minimax(game, depth + 1, False))
-                    game.remove_piece(pos)
+                    self.undo(game, pos)
             return best_score
         else:
             best_score = float('inf')
             opponent_piece = game.p1.piece if self.piece == game.p2.piece else game.p2.piece
             for pos in range(9):
                 if game.is_valid_move(pos):
-                    game.place_piece(pos, opponent_piece)
+                    self.place_piece(game, pos, opponent_piece)
                     best_score = min(best_score, self.minimax(game, depth + 1, True))
-                    game.remove_piece(pos)
+                    self.undo(game, pos)
             return best_score
 
     def evaluate_board(self, game):
@@ -215,18 +215,18 @@ class SmartArm(Arm):
         :param game: The current game instance.
         :return: A score representing the board evaluation (1 for win, -1 for loss, 0 for draw, None if the game is ongoing).
         """
-        winner = game.check_winner()
+        winner = game.get_winner()
         if winner == self.piece:
             return 1
         elif winner == (game.p1.piece if self.piece == game.p2.piece else game.p2.piece):
             return -1
-        elif game.is_draw():
+        elif game.determine_draw():
             return 0
         return None
 
     def expert(self, game):
         """
-        Determine the best move for the SmartArm using the minimax algorithm.
+        Determine the best move for the AI using the minimax algorithm.
 
         :param game: The current game instance.
         """
@@ -234,12 +234,31 @@ class SmartArm(Arm):
         best_move = None
         for pos in range(9):
             if game.is_valid_move(pos):
-                game.place_piece(pos, self.piece)
+                self.place_piece(game, pos, self.piece)
                 move_score = self.minimax(game, 0, False)
-                game.remove_piece(pos)
+                self.undo(game, pos)
                 if move_score > best_score:
                     best_score = move_score
                     best_move = pos
 
         if best_move is not None:
-            game.place_piece(best_move)
+            self.place_piece(game, best_move, self.piece)
+
+    def place_piece(self, game, pos, piece):
+        """
+        Place a piece on the board.
+
+        :param game: The current game instance.
+        :param pos: The position on the board.
+        :param piece: The piece to place ('x' or 'o').
+        """
+        game.board[pos] = piece
+
+    def undo(self, game, pos):
+        """
+        Undo a move by clearing the board position.
+
+        :param game: The current game instance.
+        :param pos: The position on the board to clear.
+        """
+        game.board[pos] = None
