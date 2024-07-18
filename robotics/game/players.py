@@ -223,7 +223,6 @@ class SmartArm(Arm):
             self.undo(game, pos)
             game.update()
             if score > best_score:
-                print('New Best Move')
                 best_score = score
                 best_move = pos
         game.place_piece(best_move)
