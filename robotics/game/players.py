@@ -199,10 +199,8 @@ class SmartArm(Arm):
         scores = []
         for pos in self.get_possible_moves(game):
             self.place_piece(game, pos, maximizer_mark)
-            game.update()
-            scores.append(self.minimax(not is_max_turn, game.p1.piece if is_max_turn else game.p2.piece , game, depth))
+            scores.append(self.minimax(not is_max_turn, game.curr_turn, game, depth))
             self.undo(game, pos)
-            game.update()
 
         return max(scores) if is_max_turn else min(scores)
 
@@ -218,10 +216,8 @@ class SmartArm(Arm):
         random.shuffle(possible_moves)
         for pos in possible_moves:
             self.place_piece(game, pos, self.piece)
-            game.update()
-            score = self.minimax(False, game.p1.piece, game, 0)
+            score = self.minimax(False, game.curr_turn, game, 0)
             self.undo(game, pos)
-            game.update()
             if score > best_score:
                 best_score = score
                 best_move = pos
@@ -236,6 +232,7 @@ class SmartArm(Arm):
         :param piece: The piece to place ('x' or 'o').
         """
         game.board[pos] = piece
+        game.update()
 
     def undo(self, game, pos):
         """
@@ -245,6 +242,7 @@ class SmartArm(Arm):
         :param pos: The position on the board to clear.
         """
         game.board[pos] = None
+        game.update()
 
     def get_possible_moves(self, game):
         """
