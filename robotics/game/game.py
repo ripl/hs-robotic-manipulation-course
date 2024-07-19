@@ -213,12 +213,12 @@ class TicTacToe:
             if isinstance(current_player, Arm):
                 self.arm_move(pos, current_player)            
 
-        if not self.current_player_wins():
-            self.update()
+            if not self.current_player_wins():
+                self.update()
 
-            next_player = self.current_player_obj()
-            if isinstance(next_player, SmartArm):   
-                next_player.play(self)
+                next_player = self.current_player_obj()
+                if isinstance(next_player, SmartArm):   
+                    next_player.play(self)
         
         print(self)
 
@@ -342,8 +342,8 @@ if __name__ == '__main__':
     print("AI difficulty: ")
     print("   Novice  (1)")
     print("   Pro     (2)")
-    print("   Exprert (3)")
-    lvl = int(input("\nChoose Wisley: ").strip())
+    print("   Expert  (3)")
+    lvl = int(input("\nChoose Wisely: ").strip())
 
     p1 = Player('x')
     p2 = SmartArm('o', lvl)
