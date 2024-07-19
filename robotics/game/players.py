@@ -127,6 +127,7 @@ class Arm(Player):
 class SmartArm(Arm):
     """
     Represents a Robotic Arm which can play on the board on its own.
+    Inherits from the Arm class.
 
     >>> p1 = Player('x')
     >>> p2 = Arm('o') 
@@ -179,17 +180,15 @@ class SmartArm(Arm):
         """
         Implement the minimax algorithm to determine the best move for the AI.
 
-        NOTE: This algorithms assumes that the SmartArm is always player 2.
-
         :param is_max_turn: A boolean indicating if the current player is the maximizing player.
         :param maximizer_mark: The mark of the maximizing player ('x' or 'o').
         :param game: The current game instance.
         :param depth: The depth of the current call.
         :return: The optimal move score for the current board state.
         """
-        if game.get_winner() == game.p1.piece:
+        if game.get_winner() is not None and game.get_winner() != self.piece:
             return 10 - depth
-        elif game.get_winner() == game.p2.piece:
+        elif game.get_winner() == self.piece:
             return depth - 10
         elif game.determine_draw():
             return 0
