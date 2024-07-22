@@ -195,6 +195,7 @@ class SmartArm(Arm):
                 return
         
         for move in possible_moves:
+            game.update()
             self.pseudo_place_piece(game, move, opp_piece)
             block = game.current_player_wins()
             self.pseudo_undo(game, move)

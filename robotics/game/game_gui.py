@@ -4,13 +4,13 @@ from players import Player, Arm, SmartArm
 import sys
 
 class TicTacToeGUI:
-    def __init__(self):
+    def __init__(self, game=None, size=600):
         # General setup
         pygame.init()
         self.clock = pygame.time.Clock()
         
         # Setting up the main window
-        self.WIDTH, self.HEIGHT = 500, 600
+        self.WIDTH, self.HEIGHT = size - 100, size
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         pygame.display.set_caption("TTIC Interface")
         
@@ -23,15 +23,18 @@ class TicTacToeGUI:
         
         # Font setup
         pygame.font.init()
-        self.font_large = pygame.font.SysFont(None, 30)
-        self.font_small = pygame.font.SysFont(None, 24)
+        self.font_large = pygame.font.SysFont(None, int(30 * self.HEIGHT / 600))
+        self.font_small = pygame.font.SysFont(None, int(24 * self.HEIGHT / 600))
         
         # Initialize boards
         self.init_boards()
+
+        # Connect the TicTacToe instance to the GUI
+        self.game = game
         
     def init_boards(self):
         # Define the Tic Tac Toe board cells
-        self.board_size = 300
+        self.board_size = int(self.HEIGHT * 0.5)
         self.cell_size = self.board_size // 3
         self.border_width = 1
         self.adjusted_cell_size = self.cell_size - self.border_width
@@ -59,7 +62,7 @@ class TicTacToeGUI:
         
         # Position the TTIC board
         self.ttic_board_origin_x = self.board_origin_x + self.board_size + self.cell_size // 2 + self.border_width
-        self.ttic_board_origin_y = self.board_origin_y + self.cell_size // 2 + 52
+        self.ttic_board_origin_y = self.board_origin_y + self.cell_size // 2 + int(self.HEIGHT * 0.086)
         
         # Create the TTIC board of rectangles
         self.ttic_board = []
@@ -77,8 +80,8 @@ class TicTacToeGUI:
         self.letters = {0: "T", 1: "T", 2: "I", 3: "C"}
         
         # Define the new board in the top right corner
-        self.pieces_board_width = 200
-        self.pieces_board_height = 300
+        self.pieces_board_width = int(self.WIDTH * 0.4)
+        self.pieces_board_height = int(self.HEIGHT * 0.5)
         self.top_right_cell_width = self.pieces_board_width // 2
         self.top_right_cell_height = self.pieces_board_height // 3
         self.top_right_adjusted_cell_width = self.top_right_cell_width - self.border_width
@@ -127,6 +130,14 @@ class TicTacToeGUI:
             label = self.font_small.render(self.top_right_letters[index], True, self.blk)
             self.screen.blit(label, (rect.x + 5, rect.y + 5))  # Slightly offset from top left corner
 
+    def update(self, pos):
+        """
+        Update the GUI and the game logic of the board.
+
+        :param pos: The position where the player has clicked.
+        """
+        pass
+
     def run(self):
         # Game loop
         while True:
@@ -147,5 +158,5 @@ class TicTacToeGUI:
             self.clock.tick(60)  # Frames per second
 
 if __name__ == "__main__":
-    game = TicTacToeGUI()
+    game = TicTacToeGUI(size=1000)
     game.run()
