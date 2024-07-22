@@ -84,7 +84,7 @@ class Arm(Player):
         self.arm.set_and_wait_goal_pos(self.arm_config['home_pos'])
 
         # NOTE: This list will represent the available "start" pieces.
-        self.pieces = ["A", "B", "C", "D", "E", "F"]
+        self.pieces = ["A", "B", "C", "D", "E"]
 
         self.used_pieces = []
 
@@ -161,7 +161,11 @@ class SmartArm(Arm):
 
         :param game: The current game instance.
         """
-        pass
+        possible_moves = self.get_possible_moves(game)
+
+        random_move = random.choice(possible_moves)
+
+        game.place_piece(random_move)
 
     def pro(self, game):
         """
@@ -174,7 +178,32 @@ class SmartArm(Arm):
             (0, 3, 6), (1, 4, 7), (2, 5, 8),  # vertical
             (0, 4, 8), (2, 4, 6)              # diagonal
         ]
-        pass
+
+        possible_moves = self.get_possible_moves(game)
+
+        if game.p1 is self:
+            opp_piece = game.p2.piece
+        else:
+            opp_piece = game.p1.piece
+
+        for move in possible_moves:
+            self.pseudo_place_piece(game, move, self.piece)
+            win = game.current_player_wins()
+            self.pseudo_undo(game, move)
+            if win:
+                game.place_piece(move)
+                return
+        
+        for move in possible_moves:
+            self.pseudo_place_piece(game, move, opp_piece)
+            block = game.current_player_wins()
+            self.pseudo_undo(game, move)
+            if block:
+                game.place_piece(move)
+                return
+            
+        self.novice(game)
+       
 
     def minimax(self, is_max_turn, maximizer_mark, game, depth):
         """
@@ -197,9 +226,9 @@ class SmartArm(Arm):
 
         scores = []
         for pos in self.get_possible_moves(game):
-            self.place_piece(game, pos, maximizer_mark)
+            self.pseudo_place_piece(game, pos, maximizer_mark)
             scores.append(self.minimax(not is_max_turn, game.curr_turn, game, depth))
-            self.undo(game, pos)
+            self.pseudo_undo(game, pos)
 
         return max(scores) if is_max_turn else min(scores)
 
@@ -214,15 +243,15 @@ class SmartArm(Arm):
         possible_moves = self.get_possible_moves(game)
         random.shuffle(possible_moves)
         for pos in possible_moves:
-            self.place_piece(game, pos, self.piece)
+            self.pseudo_place_piece(game, pos, self.piece)
             score = self.minimax(False, game.curr_turn, game, 0)
-            self.undo(game, pos)
+            self.pseudo_undo(game, pos)
             if score > best_score:
                 best_score = score
                 best_move = pos
         game.place_piece(best_move)
 
-    def place_piece(self, game, pos, piece):
+    def pseudo_place_piece(self, game, pos, piece):
         """
         Place a piece on the board.
 
@@ -233,7 +262,7 @@ class SmartArm(Arm):
         game.board[pos] = piece
         game.update()
 
-    def undo(self, game, pos):
+    def pseudo_undo(self, game, pos):
         """
         Undo a move by clearing the board position.
 
