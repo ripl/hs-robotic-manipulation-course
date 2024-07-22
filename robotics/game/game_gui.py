@@ -4,7 +4,7 @@ from players import Player, Arm, SmartArm
 import sys
 
 class TicTacToeGUI:
-    def __init__(self, game=None, size=600):
+    def __init__(self, game=None, size=800):
         # General setup
         pygame.init()
         self.clock = pygame.time.Clock()
@@ -158,5 +158,5 @@ class TicTacToeGUI:
             self.clock.tick(60)  # Frames per second
 
 if __name__ == "__main__":
-    game = TicTacToeGUI(size=1000)
+    game = TicTacToeGUI()
     game.run()
