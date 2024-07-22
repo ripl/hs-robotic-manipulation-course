@@ -151,14 +151,18 @@ class TicTacToeGUI:
         """
         Update the board of the GUI.
         """
+        X_IMAGE = pygame.transform.scale(pygame.image.load("images/x.png"), (100, 100))
+        O_IMAGE = pygame.transform.scale(pygame.image.load("images/o.png"), (100, 100))
+
         for i in range(3):
             for j in range(3):
                 index = i + j * 3
-                if self.game.board[index] is None:
-                    continue
-                else:
-                    label = self.font_pieces.render(self.game.board[index], True, self.dark_blue)
-                    self.screen.blit(label, (250 * i , 750 + 250 * j))
+                space = self.game.board[index]
+                offset = 125 // 2
+                if space == 'o':
+                    self.screen.blit(O_IMAGE, (250 * i + offset, offset + 750 + 250 * j))
+                elif space == 'x':
+                    self.screen.blit(X_IMAGE, (250 * i + offset, offset +  750 + 250 * j))
 
 
     def run(self):
