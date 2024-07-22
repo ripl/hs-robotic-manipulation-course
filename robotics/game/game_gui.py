@@ -4,7 +4,7 @@ from players import Player, Arm, SmartArm
 import sys
 
 class TicTacToeGUI:
-    def __init__(self, game=None, size=800):
+    def __init__(self, game=None, size=1500):
         # General setup
         pygame.init()
         self.clock = pygame.time.Clock()
@@ -140,33 +140,25 @@ class TicTacToeGUI:
 
         # What is a valid pos
         x, y = pos[0], pos[1]
-
         if 0 <= x <= 750 and 750 <= y <= 1500:
-             if 0 <= x < 750 // 3 and 750 <= y <= 1500 // 3 + 750:
-                 self.game.place_piece(0)
+            for i in range(3):
+                for j in range(3):
+                    if 250 * i  <= x <= 250 * (i + 1):
+                        if 750 + (250 * j) <= y <= 750 + (250 * (j + 1)):
+                            move = i + j * 3
+                            self.game.place_piece(move)
+    
 
+    def draw_current_board(self):
+        for i in range(3):
+            for j in range(3):
+                index = i * 3 + j
+                if self.game.board[index] is None:
+                    continue
+                else:
+                    label = self.font_large.render(self.game.board[index], True, self.dark_blue)
+                    self.screen.blit(label, (250 * j + 125, 750 + 250 * i + 125))
 
-    def draw_curr_board(self):
-        # Draw the pieces on the board
-        curr_board = []
-        for row in range(3):
-            for col in range(3):
-                rect = pygame.Rect(
-                    self.board_origin_x + col * (self.adjusted_cell_size + self.border_width),
-                    self.board_origin_y + row * (self.adjusted_cell_size + self.border_width),
-                    self.adjusted_cell_size,
-                    self.adjusted_cell_size
-                )
-                curr_board.append(rect)
-
-        for index, rect in enumerate(curr_board):
-            pygame.draw.rect(self.screen, self.blk, rect, self.border_width)
-            
-            if self.game.board[index] is None:
-                continue
-            else:
-                label = self.font_small.render(self.game.board[index], True, self.blk)
-                self.screen.blit(label, (rect.x + 5, rect.y + 5))  # Slightly offset from top left corner
 
     def run(self):
         # Game loop
@@ -191,7 +183,7 @@ class TicTacToeGUI:
             self.draw_boards()
 
             # Draw moves
-            self.draw_curr_board()
+            self.draw_current_board()
             
             # Update the screen
             pygame.display.flip()
@@ -201,5 +193,5 @@ if __name__ == "__main__":
     p1, p2 = Player('o'), Player('x')
     game = TicTacToe(p1, p2)
 
-    game = TicTacToeGUI(game, 1500)
+    game = TicTacToeGUI(game)
     game.run()
