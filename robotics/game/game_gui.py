@@ -135,7 +135,6 @@ class TicTacToeGUI:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
-                if 
             
             # Fill the background with light grey color
             self.screen.fill(self.light_grey)
