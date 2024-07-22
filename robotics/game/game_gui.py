@@ -36,7 +36,7 @@ class TicTacToeGUI:
         # Define the Tic Tac Toe board cells
         self.board_size = int(self.HEIGHT * 0.5)
         self.cell_size = self.board_size // 3
-        self.border_width = 1
+        self.border_width = 3
         self.adjusted_cell_size = self.cell_size - self.border_width
         
         # Position the board in the bottom left corner
@@ -136,7 +136,37 @@ class TicTacToeGUI:
 
         :param pos: The position where the player has clicked.
         """
-        pass
+        # Update the game logic...
+
+        # What is a valid pos
+        x, y = pos[0], pos[1]
+
+        if 0 <= x <= 750 and 750 <= y <= 1500:
+             if 0 <= x < 750 // 3 and 750 <= y <= 1500 // 3 + 750:
+                 self.game.place_piece(0)
+
+
+    def draw_curr_board(self):
+        # Draw the pieces on the board
+        curr_board = []
+        for row in range(3):
+            for col in range(3):
+                rect = pygame.Rect(
+                    self.board_origin_x + col * (self.adjusted_cell_size + self.border_width),
+                    self.board_origin_y + row * (self.adjusted_cell_size + self.border_width),
+                    self.adjusted_cell_size,
+                    self.adjusted_cell_size
+                )
+                curr_board.append(rect)
+
+        for index, rect in enumerate(curr_board):
+            pygame.draw.rect(self.screen, self.blk, rect, self.border_width)
+            
+            if self.game.board[index] is None:
+                continue
+            else:
+                label = self.font_small.render(self.game.board[index], True, self.blk)
+                self.screen.blit(label, (rect.x + 5, rect.y + 5))  # Slightly offset from top left corner
 
     def run(self):
         # Game loop
@@ -146,17 +176,30 @@ class TicTacToeGUI:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    pos = pygame.mouse.get_pos()
+
+                    print(pos[0], pos[1])
+
+                    self.update(pos)
+                    
             
             # Fill the background with light grey color
             self.screen.fill(self.light_grey)
             
             # Draw all the boards
             self.draw_boards()
+
+            # Draw moves
+            self.draw_curr_board()
             
             # Update the screen
             pygame.display.flip()
             self.clock.tick(60)  # Frames per second
 
 if __name__ == "__main__":
-    game = TicTacToeGUI()
+    p1, p2 = Player('o'), Player('x')
+    game = TicTacToe(p1, p2)
+
+    game = TicTacToeGUI(game, 1500)
     game.run()
