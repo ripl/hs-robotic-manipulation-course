@@ -1,7 +1,9 @@
 import pygame
+from game import TicTacToe
+from players import Player, Arm, SmartArm
 import sys
 
-class GameGUI:
+class TicTacToeGUI:
     def __init__(self):
         # General setup
         pygame.init()
@@ -133,6 +135,7 @@ class GameGUI:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
+                if 
             
             # Fill the background with light grey color
             self.screen.fill(self.light_grey)
@@ -145,5 +148,5 @@ class GameGUI:
             self.clock.tick(60)  # Frames per second
 
 if __name__ == "__main__":
-    game = GameGUI()
+    game = TicTacToeGUI()
     game.run()
