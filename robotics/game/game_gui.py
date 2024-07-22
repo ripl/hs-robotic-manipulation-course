@@ -23,6 +23,7 @@ class TicTacToeGUI:
         
         # Font setup
         pygame.font.init()
+        self.font_pieces = pygame.font.SysFont(None, int(60 * self.HEIGHT / 600))
         self.font_large = pygame.font.SysFont(None, int(30 * self.HEIGHT / 600))
         self.font_small = pygame.font.SysFont(None, int(24 * self.HEIGHT / 600))
         
@@ -132,13 +133,10 @@ class TicTacToeGUI:
 
     def update(self, pos):
         """
-        Update the GUI and the game logic of the board.
+        Update the game logic of the board.
 
         :param pos: The position where the player has clicked.
         """
-        # Update the game logic...
-
-        # What is a valid pos
         x, y = pos[0], pos[1]
         if 0 <= x <= 750 and 750 <= y <= 1500:
             for i in range(3):
@@ -150,14 +148,17 @@ class TicTacToeGUI:
     
 
     def draw_current_board(self):
+        """
+        Update the board of the GUI.
+        """
         for i in range(3):
             for j in range(3):
-                index = i * 3 + j
+                index = i + j * 3
                 if self.game.board[index] is None:
                     continue
                 else:
-                    label = self.font_large.render(self.game.board[index], True, self.dark_blue)
-                    self.screen.blit(label, (250 * j + 125, 750 + 250 * i + 125))
+                    label = self.font_pieces.render(self.game.board[index], True, self.dark_blue)
+                    self.screen.blit(label, (250 * i , 750 + 250 * j))
 
 
     def run(self):
