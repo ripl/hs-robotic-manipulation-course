@@ -133,7 +133,7 @@ class TicTacToeUI:
 
     def update(self, pos):
         """
-        Update the game logic of the board.
+        Update the logical and physical board.
 
         :param pos: The position where the player has clicked.
         """
@@ -149,7 +149,7 @@ class TicTacToeUI:
 
     def draw_current_board(self):
         """
-        Update the board of the GUI.
+        Update the User Interface.
         """
         X_IMAGE = pygame.transform.scale(pygame.image.load("images/x.png"), (100, 100))
         O_IMAGE = pygame.transform.scale(pygame.image.load("images/o.png"), (100, 100))
@@ -173,7 +173,7 @@ class TicTacToeUI:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
-                if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.type == pygame.MOUSEBUTTONDOWN and self.game is not None:
                     pos = pygame.mouse.get_pos()
 
                     print(pos[0], pos[1])
