@@ -5,14 +5,14 @@ from players import Player, Arm, SmartArm
 from robotics.robot.robot import Robot
 import sys
 
-class TicTacToeGUI:
+class TicTacToeUI:
     def __init__(self, game=None, size=1500):
         # General setup
         pygame.init()
         self.clock = pygame.time.Clock()
         
         # Setting up the main window
-        self.WIDTH, self.HEIGHT = size - 100, size
+        self.WIDTH, self.HEIGHT = size - 250, size
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         pygame.display.set_caption("TTIC Interface")
         
@@ -212,7 +212,7 @@ class TicTacToeGUI:
          
         
         while True:
-            pos = (0, 0)
+            # pos = (0, 0)
             # Handling input
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -250,5 +250,5 @@ if __name__ == "__main__":
     p1, p2 = Player('x'), SmartArm('o')
     game = TicTacToe(p1, p2)
 
-    game = TicTacToeGUI(game)
+    game = TicTacToeUI(game)
     game.run()

@@ -1,10 +1,10 @@
 {
     "arm": {
         "baudrate": 1000000,
-        "device_name": "/dev/ttyACM1",
-        "servo_ids": [25, 26, 27, 28, 29, 30],
-        "max_position_limit": [3200, 2800, 3000, 3072, 4096, 2800],
-        "min_position_limit": [900, 1650, 1100, 1024, 0, 2020],
+        "device_name": "/dev/ttyACM0",
+        "servo_ids": [1,2,3,4,5,6],
+        "max_position_limit": [3200, 2800, 3000, 3500, 4096, 2800],
+        "min_position_limit": [900, 1650, 1100, 600, 0, 2020],
         "velocity_limit": [30, 20, 40, 40, 40, 50],
         "pwm_limit": [885, 885, 885, 885, 885, 885],
         "rest_pos": [2048, 1600, 1070, 2200, 2048, 2048],
