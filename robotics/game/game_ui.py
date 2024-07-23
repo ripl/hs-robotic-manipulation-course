@@ -10,7 +10,7 @@ class TicTacToeUI:
         self.clock = pygame.time.Clock()
         
         # Setting up the main window
-        self.WIDTH, self.HEIGHT = size, size
+        self.WIDTH, self.HEIGHT = size - 250, size
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         pygame.display.set_caption("TTIC Interface")
         
@@ -81,7 +81,7 @@ class TicTacToeUI:
         self.letters = {0: "T", 1: "T", 2: "I", 3: "C"}
         
         # Define the new board in the top right corner
-        self.pieces_board_width = int(self.WIDTH * 0.5)
+        self.pieces_board_width = int(self.WIDTH * 0.4)
         self.pieces_board_height = int(self.HEIGHT * 0.5)
         self.top_right_cell_width = self.pieces_board_width // 2
         self.top_right_cell_height = self.pieces_board_height // 3
