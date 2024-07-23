@@ -1,4 +1,3 @@
-import time
 import pygame
 from game import TicTacToe
 from players import Player, Arm, SmartArm
@@ -203,9 +202,9 @@ class TicTacToeUI:
                 indx = i + j * 2
                 if spaces[indx] in pieces:
                     if self.game.p2.piece == 'x':
-                        self.screen.blit(X_IMAGE, (1500 - 560 + 280 * (i), 300 * j))
+                        self.screen.blit(X_IMAGE, (1250 - 500 + 250 * (i), 300 * j))
                     else:
-                        self.screen.blit(O_IMAGE, (1500 - 560 + 280 * (i ), 300 * j))
+                        self.screen.blit(O_IMAGE, (1250 - 500 + 250 * (i ), 300 * j))
 
     def run(self):
         # Game loop
@@ -216,6 +215,9 @@ class TicTacToeUI:
             # Handling input
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    smart_arm = self.game.p2.arm
+                    smart_arm.set_and_wait_goal_pos([2048, 1600, 1070, 2200, 2048, 2048])
+                    smart_arm.arm._disable_torque() 
                     pygame.quit()
                     sys.exit()
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -252,7 +254,3 @@ if __name__ == "__main__":
 
     game = TicTacToeUI(game)
     game.run()
-
-    # game.reset()
-    p2.arm.set_and_wait_goal_pos([2048, 1600, 1070, 2200, 2048, 2048])
-    p2.arm._disable_torque()
