@@ -1,17 +1,38 @@
-# Welcome to the 2024 Robotic Manipulation Course
+# Robotic Manipulation
 
-Throughout this course, we will delve into the essentials of programming using Python, with a focus on Robotic Manipulation.
+- [Robotic Manipulation](#robotic-manipulation)
+  - [Setup](#setup)
+  - [Controlling the robot](#controlling-the-robot)
 
-We are excited to introduce this course for the first time and look forward to offering it annually in the future.
+## Setup
 
-## Student Slack Channel
+Clone the repo and create a virtual environment. We use Python 3.10.12.
 
-Join our student Slack channel for discussions and updates:
+```bash
+# Create a virtual environment in the project root
+python3 -m venv env
 
-- [Join the Slack Channel](https://join.slack.com/t/ttic-ripl/shared_invite/zt-2ln57blkx-e9Y_fWSSnCx1r_86_bldUQ)
+# Add the project to the PYTHONPATH in the virtual environment
+echo 'export PYTHONPATH="$PYTHONPATH:/absolute/path/to/hs-robotic-manipulation-course"' >> env/bin/activate
 
-## Reference Text
+# Activate the virtual environment
+source env/bin/activate
 
-For supplementary reading and resources, we recommend:
+# Install the dependencies
+pip install -r requirements.txt
 
-- [Composing Programs](https://www.composingprograms.com/)
+# To deactivate the virtual environment
+deactivate
+```
+
+## Controlling the robot
+
+First, in `config.json`, modify `device_name` to the USB port name on your PC. For example, mine is `"device_name": "/dev/ttyACM2"`.
+
+Then, `cd` into the `robotics/` directory and run the script: `python position_control.py`.
+
+The script will prompt you to enter a servo ID (which we set 1-6 from base to gripper) and a delta position, which is the amount (in degrees) to move the servo by. Positive and negative values move the servo in opposite directions. **PLEASE USE SMALL VALUES FOR DELTA POSITION WHEN STARTING OUT!** Otherwise, the arm may run into the table and damage itself.
+
+**Note**: in case of emergency, unplug the power source!!!
+
+**Note**: motor 3 is the 5V motor supporting the most weight. Thus, when rotating that joint up, you need a positive delta of at least 15.
