@@ -168,6 +168,7 @@ class TicTacToeUI:
     def run(self):
         # Game loop
         while True:
+            pos = (0,0)
             # Handling input
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -184,6 +185,18 @@ class TicTacToeUI:
             # Fill the background with light grey color
             self.screen.fill(self.light_grey)
             
+            # Draw all the boards
+            self.draw_boards()
+
+            # Draw moves
+            self.draw_current_board()
+            
+            # Update the screen
+            pygame.display.flip()
+            self.clock.tick(60)  # Frames per second
+
+            self.update(pos)
+
             # Draw all the boards
             self.draw_boards()
 
