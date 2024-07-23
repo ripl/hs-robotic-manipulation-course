@@ -1,16 +1,18 @@
+import time
 import pygame
 from game import TicTacToe
 from players import Player, Arm, SmartArm
+from robotics.robot.robot import Robot
 import sys
 
-class TicTacToeUI:
+class TicTacToeGUI:
     def __init__(self, game=None, size=1500):
         # General setup
         pygame.init()
         self.clock = pygame.time.Clock()
         
         # Setting up the main window
-        self.WIDTH, self.HEIGHT = size - 250, size
+        self.WIDTH, self.HEIGHT = size - 100, size
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         pygame.display.set_caption("TTIC Interface")
         
@@ -101,7 +103,7 @@ class TicTacToeUI:
                     self.pieces_board_origin_y + row * (self.top_right_adjusted_cell_height + self.border_width),
                     self.top_right_adjusted_cell_width,
                     self.top_right_adjusted_cell_height
-                )
+                ) 
                 self.pieces_board.append(rect)
         
         # Define the letters for the top right board
@@ -133,7 +135,7 @@ class TicTacToeUI:
 
     def update(self, pos):
         """
-        Update the logical and physical board.
+        Update the game logic of the board.
 
         :param pos: The position where the player has clicked.
         """
@@ -145,11 +147,15 @@ class TicTacToeUI:
                         if 750 + (250 * j) <= y <= 750 + (250 * (j + 1)):
                             move = i + j * 3
                             self.game.place_piece(move)
-    
+
+    def smart_update(self):
+        self.game.smart_place_piece()
+        self.draw_current_board()
+        pygame.display.flip()
 
     def draw_current_board(self):
         """
-        Update the User Interface.
+        Update the board of the GUI.
         """
         X_IMAGE = pygame.transform.scale(pygame.image.load("images/x.png"), (100, 100))
         O_IMAGE = pygame.transform.scale(pygame.image.load("images/o.png"), (100, 100))
@@ -163,53 +169,86 @@ class TicTacToeUI:
                     self.screen.blit(O_IMAGE, (250 * i + offset, offset + 750 + 250 * j))
                 elif space == 'x':
                     self.screen.blit(X_IMAGE, (250 * i + offset, offset +  750 + 250 * j))
+        
+        # Banner for current player 
+        curr_player = self.game.current_player()
+        
+        if self.game.get_winner() is not None:
+            winner = self.game.get_winner()
+            if winner == 'x':
+                player = 1
+            else:
+                player = 2 
+            label = self.font_small.render(f'Player {player} Wins!', True, (34,139,34))
+            self.screen.blit(label, (210,100))
+        else: 
+            curr_player == self.game.current_player()
+            if curr_player == 'x':
+                player = 1
+                label = self.font_small.render(f'Player {player} is the current player.', True, (255,0,0))
+                self.screen.blit(label, (120,100))
+            else:
+                player = 2
+                label = self.font_small.render(f'Player {player} is the current player.', True, (0,0,255))
+                self.screen.blit(label, (120,100))
+            
+        #Available pieces 
 
+        spaces = list(self.top_right_letters.values())
+        spaces.sort()
+        pieces = self.game.p2.pieces
+
+        for i in range(2):
+            for j in range(3):
+                indx = i + j * 2
+                if spaces[indx] in pieces:
+                    if self.game.p2.piece == 'x':
+                        self.screen.blit(X_IMAGE, (1500 - 560 + 280 * (i), 300 * j))
+                    else:
+                        self.screen.blit(O_IMAGE, (1500 - 560 + 280 * (i ), 300 * j))
 
     def run(self):
         # Game loop
+         
+        
         while True:
-            pos = (0,0)
+            pos = (0, 0)
             # Handling input
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
-                if event.type == pygame.MOUSEBUTTONDOWN and self.game is not None:
+                if event.type == pygame.MOUSEBUTTONDOWN:
                     pos = pygame.mouse.get_pos()
-
-                    print(pos[0], pos[1])
-
                     self.update(pos)
                     
-            
+    
             # Fill the background with light grey color
             self.screen.fill(self.light_grey)
-            
             # Draw all the boards
             self.draw_boards()
-
             # Draw moves
             self.draw_current_board()
-            
+    
             # Update the screen
             pygame.display.flip()
-            self.clock.tick(60)  # Frames per second
+            # self.clock.tick(60)  # Frames per second
 
-            self.update(pos)
 
+            self.smart_update()
+            # self.screen.fill(self.light_grey)
             # Draw all the boards
             self.draw_boards()
-
             # Draw moves
             self.draw_current_board()
-            
+    
             # Update the screen
             pygame.display.flip()
             self.clock.tick(60)  # Frames per second
 
 if __name__ == "__main__":
-    p1, p2 = Player('o'), Player('x')
+    p1, p2 = Player('x'), SmartArm('o')
     game = TicTacToe(p1, p2)
 
-    game = TicTacToeUI(game)
+    game = TicTacToeGUI(game)
     game.run()
