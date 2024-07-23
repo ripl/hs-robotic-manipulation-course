@@ -217,7 +217,7 @@ class TicTacToeUI:
                 if event.type == pygame.QUIT:
                     smart_arm = self.game.p2.arm
                     smart_arm.set_and_wait_goal_pos([2048, 1600, 1070, 2200, 2048, 2048])
-                    smart_arm.arm._disable_torque() 
+                    smart_arm._disable_torque() 
                     pygame.quit()
                     sys.exit()
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -249,7 +249,7 @@ class TicTacToeUI:
             self.clock.tick(60)  # Frames per second
 
 if __name__ == "__main__":
-    p1, p2 = Player('x'), SmartArm('o')
+    p1, p2 = Player('x'), SmartArm('o', lvl=2)
     game = TicTacToe(p1, p2)
 
     game = TicTacToeUI(game)
