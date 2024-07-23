@@ -252,3 +252,7 @@ if __name__ == "__main__":
 
     game = TicTacToeUI(game)
     game.run()
+
+    # game.reset()
+    p2.arm.set_and_wait_goal_pos([2048, 1600, 1070, 2200, 2048, 2048])
+    p2.arm._disable_torque()
