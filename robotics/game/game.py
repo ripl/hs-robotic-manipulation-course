@@ -216,11 +216,12 @@ class TicTacToe:
             if not self.current_player_wins():
                 self.update()
 
-                next_player = self.current_player_obj()
-                if isinstance(next_player, SmartArm):   
-                    next_player.play(self)
-        
         print(self)
+
+    def smart_place_piece(self):
+        next_player = self.current_player_obj()
+        if isinstance(next_player, SmartArm):   
+            next_player.play(self)
 
     def update(self):
         """
@@ -365,6 +366,7 @@ if __name__ == '__main__':
                 break
             pos = int(user_input)
             game.place_piece(pos)
+            game.smart_place_piece()
         except ValueError:
             print("Invalid input. Please enter a number between 0 and 8 or 'q' to quit.")
         except Exception as e:
