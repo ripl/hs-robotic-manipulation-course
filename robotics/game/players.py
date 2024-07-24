@@ -78,7 +78,9 @@ class Arm(Player):
                          servo_ids=self.arm_config['servo_ids'],
                          velocity_limit=self.arm_config['velocity_limit'],
                          max_position_limit=self.arm_config['max_position_limit'],
-                         min_position_limit=self.arm_config['min_position_limit'])
+                         min_position_limit=self.arm_config['min_position_limit'],
+                         position_p_gain=self.arm_config['position_p_gain'],
+                         position_i_gain=self.arm_config['position_i_gain'],)
 
         # Move the arm to the home start position
         self.arm.set_and_wait_goal_pos(self.arm_config['home_pos'])

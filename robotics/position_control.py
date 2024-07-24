@@ -120,7 +120,9 @@ def initialize_robot(arm_config, lead_config):
         arm_config['servo_ids'],
         arm_config['velocity_limit'],
         arm_config['max_position_limit'],
-        arm_config['min_position_limit']
+        arm_config['min_position_limit'],
+        arm_config['position_p_gain'],
+        arm_config['position_i_gain']
     )
 
     lead = None

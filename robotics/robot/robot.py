@@ -17,25 +17,27 @@ class Robot:
                  baudrate: int=1_000_000, 
                  servo_ids: list=[1, 2, 3, 4, 5, 6],
                  velocity_limit: Union[int, list, np.ndarray]=0,
-                 max_position_limit: Union[int, list, np.ndarray]=[3072, 2800, 3000, 3072, 4096, 2800],
-                 min_position_limit: Union[int, list, np.ndarray]=[1024, 1650, 1100, 1024, 0, 2020],
+                 max_position_limit: Union[int, list, np.ndarray]=[3072, 2800, 3000, 3500, 4096, 2800],
+                 min_position_limit: Union[int, list, np.ndarray]=[1024, 1650, 1100, 600, 0, 2020],
+                 position_p_gain: Union[int, list, np.ndarray]=[640, 640, 640, 400, 400, 400],
+                 position_i_gain: Union[int, list, np.ndarray]=[10, 10, 10, 10, 10, 10],
                 ) -> None:
         self.servo_ids = servo_ids
-        if isinstance(velocity_limit, int):
-            self.velocity_limit = [velocity_limit, ] * len(self.servo_ids)
-        else:
-            self.velocity_limit = velocity_limit
-        if isinstance(max_position_limit, int):
-            self.max_position_limit = [max_position_limit, ] * len(self.servo_ids)
-        else:
-            self.max_position_limit = max_position_limit
-        if isinstance(min_position_limit, int):
-            self.min_position_limit = [min_position_limit, ] * len(self.servo_ids)
-        else:
-            self.min_position_limit = min_position_limit
+        self.velocity_limit = self._int_to_list(velocity_limit, len(servo_ids))
+        self.max_position_limit = self._int_to_list(max_position_limit, len(servo_ids))
+        self.min_position_limit = self._int_to_list(min_position_limit, len(servo_ids))
+        self.position_p_gain = self._int_to_list(position_p_gain, len(servo_ids))
+        self.position_i_gain = self._int_to_list(position_i_gain, len(servo_ids))
+        
+        # Initialize motors
         self.dynamixel = Dynamixel.Config(baudrate=baudrate, device_name=device_name).instantiate()
         self._init_motors()
 
+    def _int_to_list(self, val, length):
+        if isinstance(val, int):
+            return [val] * length
+        return val
+    
     def _init_motors(self):
         self.position_reader = GroupSyncRead(
             self.dynamixel.portHandler,
@@ -213,7 +215,12 @@ class Robot:
         self._disable_torque()
         for motor_id in self.servo_ids:
             self.dynamixel.set_operating_mode(motor_id, OperatingMode.POSITION)
+        # Set velocity limits
         for motor_id, limit in zip(self.servo_ids, self.velocity_limit):
             self.dynamixel.set_profile_velocity(motor_id, limit)
+        # Set PID gains
+        for motor_id, p_gain, i_gain in zip(self.servo_ids, self.position_p_gain, self.position_i_gain):
+            self.dynamixel.set_P(motor_id, p_gain)
+            self.dynamixel.set_I(motor_id, i_gain)
         self._enable_torque()
         self.motor_control_state = MotorControlType.POSITION_CONTROL
