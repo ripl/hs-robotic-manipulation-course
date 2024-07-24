@@ -45,7 +45,7 @@ def record_position(arm, square, pose_type):
     input()
     pos = arm.read_position()
     pos = [int(p) for p in pos]
-    if pose_type in ['grasp', 'post_grasp']:
+    if pose_type in ['grasp', 'post-grasp']:
         pos[-1] -= 50
     return pos
 
