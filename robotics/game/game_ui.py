@@ -185,11 +185,11 @@ class TicTacToeUI:
             if curr_player == 'x':
                 player = 1
                 label = self.font_small.render(f'Player {player} is the current player.', True, (255,0,0))
-                self.screen.blit(label, (120,100))
+                self.screen.blit(label, (80,100))
             else:
                 player = 2
                 label = self.font_small.render(f'Player {player} is the current player.', True, (0,0,255))
-                self.screen.blit(label, (120,100))
+                self.screen.blit(label, (80,100))
             
         #Available pieces 
 
@@ -202,9 +202,9 @@ class TicTacToeUI:
                 indx = i + j * 2
                 if spaces[indx] in pieces:
                     if self.game.p2.piece == 'x':
-                        self.screen.blit(X_IMAGE, (1250 - 500 + 250 * (i), 300 * j))
+                        self.screen.blit(X_IMAGE, (825 +(250*i), 60 + 250 * (j) ))
                     else:
-                        self.screen.blit(O_IMAGE, (1250 - 500 + 250 * (i ), 300 * j))
+                        self.screen.blit(O_IMAGE, (825 +(250*i), 60 + 250 * (j) ))
 
     def run(self):
         # Game loop
