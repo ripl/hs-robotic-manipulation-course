@@ -7,7 +7,7 @@ with open('../config.json') as f:
     arm_config = config['arm']
 
 # Load game positions
-with open('actions.json') as f:
+with open('../actions.json') as f:
     positions = json.load(f)
 
 # Dynamixel configuration
@@ -23,14 +23,14 @@ arm = Robot(device_name=arm_config['device_name'],
 arm.set_and_wait_goal_pos(arm_config['home_pos'])
 
 def move_piece(start, end):
-    arm.set_and_wait_goal_pos(positions[start]['hover_over'])
-    arm.set_and_wait_goal_pos(positions[start]['pre_grasp'])
+    arm.set_and_wait_goal_pos(positions[start]['hover'])
+    arm.set_and_wait_goal_pos(positions[start]['pre-grasp'])
     arm.set_and_wait_goal_pos(positions[start]['grasp'])
-    arm.set_and_wait_goal_pos(positions[start]['post_grasp'])
-    arm.set_and_wait_goal_pos(positions[end]['post_grasp'])
+    arm.set_and_wait_goal_pos(positions[start]['post-grasp'])
+    arm.set_and_wait_goal_pos(positions[end]['post-grasp'])
     arm.set_and_wait_goal_pos(positions[end]['grasp'])
-    arm.set_and_wait_goal_pos(positions[end]['pre_grasp'])
-    arm.set_and_wait_goal_pos(positions[end]['hover_over'])
+    arm.set_and_wait_goal_pos(positions[end]['pre-grasp'])
+    arm.set_and_wait_goal_pos(positions[end]['hover'])
     arm.set_and_wait_goal_pos(arm_config['home_pos'])
 
 
