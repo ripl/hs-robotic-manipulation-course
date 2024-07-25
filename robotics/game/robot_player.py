@@ -1,5 +1,5 @@
 import json, time
-from robot.robot import Robot
+from robotics.robot.robot import Robot
 
 # Load robot settings
 with open('../config.json') as f:
@@ -35,15 +35,21 @@ def move_piece(start, end):
 
 
 # Sample game
-move_piece('A', '4')
-time.sleep(3) # 0
-move_piece('B', '5')
-time.sleep(3) #3
-move_piece('C', '6')
-time.sleep(3) # 2
-move_piece('D', '1')
-time.sleep(3) # 7
-move_piece('E', '8')
+
+
+move_piece('A', 'E')
+
+
+
+
+# move_piece('C', '3')
+# time.sleep(1) # 2
+
+# move_piece('D', '2')
+# time.sleep(1) # 7
+# move_piece('E', '1')
+
+# C D E
 
 # Go to home position and disable torque
 arm.set_and_wait_goal_pos(arm_config['rest_pos'])

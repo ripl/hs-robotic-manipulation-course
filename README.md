@@ -13,7 +13,8 @@ Clone the repo and create a virtual environment. We use Python 3.10.12.
 python3 -m venv env
 
 # Add the project to the PYTHONPATH in the virtual environment
-echo 'export PYTHONPATH="$PYTHONPATH:/absolute/path/to/hs-robotic-manipulation-course"' >> env/bin/activate
+echo 'export PYTHONPATH="$PYTHONPATH:/home/school/Desktop/hs-robotic-manipulation-course"' >> env/bin/activate
+
 
 # Activate the virtual environment
 source env/bin/activate
