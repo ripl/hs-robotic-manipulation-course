@@ -46,7 +46,7 @@ def record_position(arm, square, pose_type):
     pos = arm.read_position()
     pos = [int(p) for p in pos]
     if pose_type in ['grasp', 'post-grasp']:
-        pos[-1] -= 50
+        pos[-1] -= 100
     return pos
 
 # Function to record positions with leader arm

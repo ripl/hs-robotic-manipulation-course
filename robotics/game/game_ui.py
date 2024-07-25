@@ -24,9 +24,9 @@ class TicTacToeUI:
         
         # Font setup
         pygame.font.init()
-        self.font_pieces = pygame.font.SysFont(None, int(60 * self.HEIGHT / 600))
-        self.font_large = pygame.font.SysFont(None, int(30 * self.HEIGHT / 600))
-        self.font_small = pygame.font.SysFont(None, int(24 * self.HEIGHT / 600))
+        self.font_pieces = pygame.font.SysFont("Arial", int(30 * self.HEIGHT / 800))
+        self.font_large = pygame.font.SysFont("Arial", int(30 * self.HEIGHT / 800))
+        self.font_small = pygame.font.SysFont("Arial", int(24 * self.HEIGHT / 800))
         
         # Initialize boards
         self.init_boards()
@@ -156,8 +156,8 @@ class TicTacToeUI:
         """
         Update the board of the GUI.
         """
-        X_IMAGE = pygame.transform.scale(pygame.image.load("images/x.png"), (100, 100))
-        O_IMAGE = pygame.transform.scale(pygame.image.load("images/o.png"), (100, 100))
+        X_IMAGE = pygame.transform.scale(pygame.image.load("images/redx.png"), (170, 170))
+        O_IMAGE = pygame.transform.scale(pygame.image.load("images/bluecircle.png"), (170, 170))
 
         for i in range(3):
             for j in range(3):
@@ -165,9 +165,9 @@ class TicTacToeUI:
                 space = self.game.board[index]
                 offset = 125 // 2
                 if space == 'o':
-                    self.screen.blit(O_IMAGE, (250 * i + offset, offset + 750 + 250 * j))
+                    self.screen.blit(O_IMAGE, (240 * i + offset, offset + 750 + 240 * j))
                 elif space == 'x':
-                    self.screen.blit(X_IMAGE, (250 * i + offset, offset +  750 + 250 * j))
+                    self.screen.blit(X_IMAGE, (240* i + offset, offset +  750 + 240 * j))
         
         # Banner for current player 
         curr_player = self.game.current_player()
@@ -202,9 +202,9 @@ class TicTacToeUI:
                 indx = i + j * 2
                 if spaces[indx] in pieces:
                     if self.game.p2.piece == 'x':
-                        self.screen.blit(X_IMAGE, (825 +(250*i), 60 + 250 * (j) ))
+                        self.screen.blit(X_IMAGE, (785 +(250*i), 60 + 250 * (j) ))
                     else:
-                        self.screen.blit(O_IMAGE, (825 +(250*i), 60 + 250 * (j) ))
+                        self.screen.blit(O_IMAGE, (785 +(250*i), 60 + 250 * (j) ))
 
     def run(self):
         # Game loop

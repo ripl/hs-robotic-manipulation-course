@@ -1,5 +1,5 @@
 import json, time
-from robot.robot import Robot
+from robotics.robot.robot import Robot
 
 # Load robot settings
 with open('../config.json') as f:
@@ -27,21 +27,22 @@ def move_piece(start, end):
     arm.set_and_wait_goal_pos(positions[start]['pre-grasp'])
     arm.set_and_wait_goal_pos(positions[start]['grasp'])
     arm.set_and_wait_goal_pos(positions[start]['post-grasp'])
-    arm.set_and_wait_goal_pos(positions[end]['post-grasp'])
-    arm.set_and_wait_goal_pos(positions[end]['grasp'])
-    arm.set_and_wait_goal_pos(positions[end]['pre-grasp'])
     arm.set_and_wait_goal_pos(positions[end]['hover'])
+    arm.set_and_wait_goal_pos(positions[end]['pre-grasp'])
+    arm.set_and_wait_goal_pos(positions[end]['grasp'])
+    arm.set_and_wait_goal_pos(positions[end]['post-grasp'])
     arm.set_and_wait_goal_pos(arm_config['home_pos'])
 
 
 # Sample game
 move_piece('A', '4')
 time.sleep(3) # 0
-move_piece('B', '5')
+move_piece('B', '1')
+
 time.sleep(3) #3
 move_piece('C', '6')
 time.sleep(3) # 2
-move_piece('D', '1')
+move_piece('D', '2')
 time.sleep(3) # 7
 move_piece('E', '8')
 
