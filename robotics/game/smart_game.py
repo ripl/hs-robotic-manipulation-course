@@ -1,6 +1,6 @@
-import random, os, sys
+import random
 from robotics.robot.robot import Robot
-from players import Player, Arm, SmartArm
+from smart_player import SmartArm
 
 class TicTacToe:
     """
@@ -341,40 +341,4 @@ class TicTacToe:
         current_player.move_piece(piece, str(pos))
 
 if __name__ == '__main__':
-
-    print("Welcome to TicTacToe. \nYou are Player 1. \nPlayer 2 is the Smart Arm.\n")
-    print("AI difficulty: ")
-    print("   Novice  (1)")
-    print("   Pro     (2)")
-    print("   Expert  (3)")
-    lvl = int(input("\nChoose Wisely: ").strip())
-
-    p1 = Player('x')
-    p2 = SmartArm('o', lvl)
-    game = TicTacToe(p1, p2)
-
-    os.system('clear')
-
-    print(p1)
-    print(p2)
-    print("Enter a position (0-8) to place your piece. \nThe SmartArm will play automatically.")
-    print("Enter 'q' at any time to quit. Press Enter to start the game.")
-    print()
-
-    while True:
-        try:
-            user_input = input("Enter the position: ")
-            if user_input.lower() == 'q':
-                print("Quitting the game.")
-                break
-            pos = int(user_input)
-            game.place_piece(pos)
-            game.smart_place_piece()
-        except ValueError:
-            print("Invalid input. Please enter a number between 0 and 8 or 'q' to quit.")
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            
-    # game.reset()
-    p2.arm.set_and_wait_goal_pos([2048, 1600, 1070, 2200, 2048, 2048])
-    p2.arm._disable_torque()
+    pass
