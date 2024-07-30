@@ -3,6 +3,7 @@ import random
 from robotics.robot.robot import Robot
 from players import Player
 
+
 class Arm(Player):
     """
     Represents a Robotic arm in a TicTacToe instance.
@@ -17,7 +18,7 @@ class Arm(Player):
     >>> p2
     ArmPlayer 2 is "o"
     """
-    def __init__(self, piece, config_path='../config.json', positions_path='../actions.json'):
+    def __init__(self, piece, config_path='../smart_config.json', positions_path='../actions.json'):
         """
         Create an Arm instance, inherit from the Player class.
 
@@ -30,16 +31,15 @@ class Arm(Player):
         # Load robot settings
         with open(config_path, 'r') as f:
             config = json.load(f)
-            self.arm_config = config["arm1"]
-            self.arm_config = config["arm2"]
+            self.arm_config_1 = config['arm1']
+            self.arm_config_2 = config['arm2']
 
         # Load game positions
         with open(positions_path, 'r') as f:
             self.positions = json.load(f)
 
-        if piece =='x':
-
         # Initialize the robotic arm with the loaded configuration
+        if piece == 'x':
             self.arm = Robot(device_name=self.arm_config_1['device_name'], 
                             servo_ids=self.arm_config_1['servo_ids'],
                             velocity_limit=self.arm_config_1['velocity_limit'],
@@ -47,7 +47,7 @@ class Arm(Player):
                             min_position_limit=self.arm_config_1['min_position_limit'],
                             position_p_gain=self.arm_config_1['position_p_gain'],
                             position_i_gain=self.arm_config_1['position_i_gain'],)
-        elif piece == "o":
+        elif piece == 'o':
             self.arm = Robot(device_name=self.arm_config_2['device_name'], 
                             servo_ids=self.arm_config_2['servo_ids'],
                             velocity_limit=self.arm_config_2['velocity_limit'],
@@ -55,6 +55,7 @@ class Arm(Player):
                             min_position_limit=self.arm_config_2['min_position_limit'],
                             position_p_gain=self.arm_config_2['position_p_gain'],
                             position_i_gain=self.arm_config_2['position_i_gain'],)
+
 
         # Move the arm to the home start position
         self.arm.set_and_wait_goal_pos([2048, 1800, 1850, 1100, 2048, 2048])
@@ -67,7 +68,7 @@ class Arm(Player):
     def __repr__(self):
         return f'ArmPlayer {self.count} is "{self.piece}"'
     
-    def move_piece(self, start, end):
+    def move_piece(self, start, end,clean=False):
         """
         Move a piece from start to end position on the physical board.
 
@@ -77,6 +78,12 @@ class Arm(Player):
         :param start: The start position on the physical board.
         :param end: The end position on the physical board.
         """
+        if self.piece == 'o' and not clean:
+            end = str(8 - int(end))
+
+        if self.piece == 'o' and clean:
+            start = str(8 - int(start))
+
         valid_poses = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
 
         for pose in valid_poses:
@@ -85,7 +92,7 @@ class Arm(Player):
         for pose in reversed(valid_poses):
             self.arm.set_and_wait_goal_pos(self.positions[end][pose])
 
-        self.arm.set_and_wait_goal_pos(self.arm_config["home_pos"])
+        self.arm.set_and_wait_goal_pos([2048, 1800, 1850, 1100, 2048, 2048])
 
     def clean_board(self, curr_board):
         """
@@ -98,8 +105,7 @@ class Arm(Player):
         """
         for space in range(len(curr_board)):
             if curr_board[space] == self.piece:
-                self.move_piece(str(space), self.used_pieces.pop())
-
+                self.move_piece(str(space), self.used_pieces.pop(), True)
 
 class SmartArm(Arm):
     """
@@ -150,6 +156,7 @@ class SmartArm(Arm):
 
         :param game: The current game instance.
         """
+        # import pdb; pdb.set_trace()
         winning_triples = [
             (0, 1, 2), (3, 4, 5), (6, 7, 8),  # horizontal
             (0, 3, 6), (1, 4, 7), (2, 5, 8),  # vertical
@@ -172,14 +179,15 @@ class SmartArm(Arm):
                 return
         
         for move in possible_moves:
+            
             game.update()
             self.pseudo_place_piece(game, move, opp_piece)
             block = game.current_player_wins()
             self.pseudo_undo(game, move)
+            game.update() # undo the previous update!
             if block:
                 game.place_piece(move)
                 return
-            
         self.novice(game)
        
 
