@@ -143,8 +143,9 @@ class TicTacToe:
         # Display board and current player's turn.
         print(self)
 
-        # If the current player is a SmartArm, play a piece.
-        self.smart_place_piece()
+        while not self.determine_draw() and not self.current_player_wins():
+            self.smart_place_piece()
+        
 
     def current_player(self):
         """
@@ -341,4 +342,6 @@ class TicTacToe:
         current_player.move_piece(piece, str(pos))
 
 if __name__ == '__main__':
-    pass
+    p1 = SmartArm('x', lvl=random.randInt[0,2] )
+    p2 = SmartArm('o', lvl=random.randInt[0,2] )
+    game = TicTacToe(p1,p2)

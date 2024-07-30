@@ -67,7 +67,7 @@ class Arm(Player):
         # Load robot settings
         with open(config_path, 'r') as f:
             config = json.load(f)
-            self.arm_config = config['arm']
+            self.arm_config = config['arm1']
 
         # Load game positions
         with open(positions_path, 'r') as f:

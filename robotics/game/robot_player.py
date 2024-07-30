@@ -4,7 +4,7 @@ from robotics.robot.robot import Robot
 # Load robot settings
 with open('../config.json') as f:
     config = json.load(f)
-    arm_config = config['arm']
+    arm_config = config['arm1']
 
 # Load game positions
 with open('../actions.json') as f:
@@ -27,17 +27,17 @@ def move_piece(start, end):
     arm.set_and_wait_goal_pos(positions[start]['pre-grasp'])
     arm.set_and_wait_goal_pos(positions[start]['grasp'])
     arm.set_and_wait_goal_pos(positions[start]['post-grasp'])
-    arm.set_and_wait_goal_pos(positions[end]['hover'])
-    arm.set_and_wait_goal_pos(positions[end]['pre-grasp'])
-    arm.set_and_wait_goal_pos(positions[end]['grasp'])
     arm.set_and_wait_goal_pos(positions[end]['post-grasp'])
+    arm.set_and_wait_goal_pos(positions[end]['grasp'])
+    arm.set_and_wait_goal_pos(positions[end]['pre-grasp'])
+    arm.set_and_wait_goal_pos(positions[end]['hover'])
     arm.set_and_wait_goal_pos(arm_config['home_pos'])
 
 
 # Sample game
-move_piece('A', '4')
+move_piece('A', '3')
 time.sleep(3) # 0
-move_piece('B', '1')
+move_piece('B', '5')
 
 time.sleep(3) #3
 move_piece('C', '6')
@@ -45,6 +45,8 @@ time.sleep(3) # 2
 move_piece('D', '2')
 time.sleep(3) # 7
 move_piece('E', '8')
+time.sleep(3)
+move_piece('F', '1')
 
 # Go to home position and disable torque
 arm.set_and_wait_goal_pos(arm_config['rest_pos'])

@@ -14,7 +14,7 @@ def parse_arguments():
 def load_robot_settings(args):
     with open('config.json') as f:
         config = json.load(f)
-    arm_config = config['arm']
+    arm_config = config['arm1']
     leader_config = config['leader'] if args.leader else None
     return arm_config, leader_config
 

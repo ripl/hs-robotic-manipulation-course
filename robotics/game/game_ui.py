@@ -24,9 +24,9 @@ class TicTacToeUI:
         
         # Font setup
         pygame.font.init()
-        self.font_pieces = pygame.font.SysFont("Arial", int(30 * self.HEIGHT / 800))
-        self.font_large = pygame.font.SysFont("Arial", int(30 * self.HEIGHT / 800))
-        self.font_small = pygame.font.SysFont("Arial", int(24 * self.HEIGHT / 800))
+        self.font_pieces = pygame.font.SysFont('Arial', int(30 * self.HEIGHT / 800))
+        self.font_large = pygame.font.SysFont('Arial' , int(30 * self.HEIGHT / 800))
+        self.font_small = pygame.font.SysFont('Arial', int(24 * self.HEIGHT / 800))
         
         # Initialize boards
         self.init_boards()
