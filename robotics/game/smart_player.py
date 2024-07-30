@@ -312,6 +312,7 @@ class SmartArm(Arm):
 
         :param game: The current game instance.
         """
+        # import pdb; pdb.set_trace()
         winning_triples = [
             (0, 1, 2), (3, 4, 5), (6, 7, 8),  # horizontal
             (0, 3, 6), (1, 4, 7), (2, 5, 8),  # vertical
@@ -334,14 +335,15 @@ class SmartArm(Arm):
                 return
         
         for move in possible_moves:
+            
             game.update()
             self.pseudo_place_piece(game, move, opp_piece)
             block = game.current_player_wins()
             self.pseudo_undo(game, move)
+            game.update() # undo the previous update!
             if block:
                 game.place_piece(move)
                 return
-            
         self.novice(game)
        
 

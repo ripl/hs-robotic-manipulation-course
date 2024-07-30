@@ -1,6 +1,6 @@
 import random
 from robotics.robot.robot import Robot
-from smart_player import SmartArm
+from smart_player import Arm, SmartArm
 
 class TicTacToe:
     """
@@ -125,7 +125,7 @@ class TicTacToe:
         if board is None:
             self.board = [None] * 9
             # Player 1 is always first
-            self.curr_turn = player1.piece
+            self.curr_turn = self.p1.piece   
         else:
             self.board = board
             # Determine which Player's turn it is
@@ -146,6 +146,7 @@ class TicTacToe:
         while not self.determine_draw() and not self.current_player_wins():
             self.smart_place_piece()
         
+
 
     def current_player(self):
         """
@@ -210,11 +211,12 @@ class TicTacToe:
         :param pos: The position on the board.
         """
         if self.is_valid_move(pos):
+
             self.board[pos] = self.current_player()
             self.history.append(self.board.copy())
 
             current_player = self.current_player_obj()
-            if isinstance(current_player, Arm):
+            if isinstance(current_player, SmartArm):
                 self.arm_move(pos, current_player)            
 
             if not self.current_player_wins():
@@ -283,7 +285,7 @@ class TicTacToe:
         curr_board = self.history[-1].copy()
         if isinstance(self.p1, Arm):
             self.p1.clean_board(curr_board)
-        elif isinstance(self.p2, Arm):
+        if isinstance(self.p2, Arm):
             self.p2.clean_board(curr_board)
 
         self.board = [None] * 9
