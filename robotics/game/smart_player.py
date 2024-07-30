@@ -1,7 +1,105 @@
 import json
 import random
 from robotics.robot.robot import Robot
-from players import Arm
+from players import Player
+
+class Arm(Player):
+    """
+    Represents a Robotic arm in a TicTacToe instance.
+
+    Examples:
+    -----------
+
+    >>> p1 = Player('x')
+    >>> p2 = Arm('o') 
+    >>> p1
+    Player 1 is "x"
+    >>> p2
+    ArmPlayer 2 is "o"
+    """
+    def __init__(self, piece, config_path='../config.json', positions_path='../actions.json'):
+        """
+        Create an Arm instance, inherit from the Player class.
+
+        :param piece: The piece assigned to the Arm player (e.g., 'x' or 'o').
+        :param config_path: Path to the configuration file for the robotic arm.
+        :param positions_path: Path to the file containing actions or positions.
+        """
+        super().__init__(piece)
+
+        # Load robot settings
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+            self.arm_config = config["arm1"]
+            self.arm_config = config["arm2"]
+
+        # Load game positions
+        with open(positions_path, 'r') as f:
+            self.positions = json.load(f)
+
+        if piece =='x':
+
+        # Initialize the robotic arm with the loaded configuration
+            self.arm = Robot(device_name=self.arm_config_1['device_name'], 
+                            servo_ids=self.arm_config_1['servo_ids'],
+                            velocity_limit=self.arm_config_1['velocity_limit'],
+                            max_position_limit=self.arm_config_1['max_position_limit'],
+                            min_position_limit=self.arm_config_1['min_position_limit'],
+                            position_p_gain=self.arm_config_1['position_p_gain'],
+                            position_i_gain=self.arm_config_1['position_i_gain'],)
+        elif piece == "o":
+            self.arm = Robot(device_name=self.arm_config_2['device_name'], 
+                            servo_ids=self.arm_config_2['servo_ids'],
+                            velocity_limit=self.arm_config_2['velocity_limit'],
+                            max_position_limit=self.arm_config_2['max_position_limit'],
+                            min_position_limit=self.arm_config_2['min_position_limit'],
+                            position_p_gain=self.arm_config_2['position_p_gain'],
+                            position_i_gain=self.arm_config_2['position_i_gain'],)
+
+        # Move the arm to the home start position
+        self.arm.set_and_wait_goal_pos([2048, 1800, 1850, 1100, 2048, 2048])
+
+        # NOTE: This list will represent the available "start" pieces.
+        self.pieces = ["A", "B", "C", "D", "E"]
+
+        self.used_pieces = []
+
+    def __repr__(self):
+        return f'ArmPlayer {self.count} is "{self.piece}"'
+    
+    def move_piece(self, start, end):
+        """
+        Move a piece from start to end position on the physical board.
+
+        This method will use the robotic arm to pick up a piece from the 
+        specified start position and place it at the specified end position.
+
+        :param start: The start position on the physical board.
+        :param end: The end position on the physical board.
+        """
+        valid_poses = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
+
+        for pose in valid_poses:
+            self.arm.set_and_wait_goal_pos(self.positions[start][pose])
+
+        for pose in reversed(valid_poses):
+            self.arm.set_and_wait_goal_pos(self.positions[end][pose])
+
+        self.arm.set_and_wait_goal_pos(self.arm_config["home_pos"])
+
+    def clean_board(self, curr_board):
+        """
+        Reset the board by moving pieces back to their start positions.
+
+        This method finds the pieces that belong to the robotic arm on the 
+        board and moves them back to their designated start positions.
+
+        :param curr_board: The current state of the board to be reset.
+        """
+        for space in range(len(curr_board)):
+            if curr_board[space] == self.piece:
+                self.move_piece(str(space), self.used_pieces.pop())
+
 
 class SmartArm(Arm):
     """

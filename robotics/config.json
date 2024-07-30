@@ -1,8 +1,21 @@
 {
-    "arm": {
+    "arm1": {
+        "baudrate": 1000000,
+        "device_name": "/dev/ttyACM0",
+        "servo_ids": [7, 8, 9, 10, 11, 12],
+        "velocity_limit": [30, 20, 40, 40, 40, 50],
+        "max_position_limit": [3200, 2800, 3000, 3500, 4096, 2800],
+        "min_position_limit": [900, 1650, 1100, 600, 0, 2020],
+        "position_p_gain": [640, 640, 640, 400, 400, 400],
+        "position_i_gain": [10, 10, 10, 10, 10, 10],
+        "pwm_limit": [885, 885, 885, 885, 885, 885],
+        "rest_pos": [2048, 1600, 1070, 2200, 2048, 2048],
+        "home_pos": [2048, 1800, 1850, 1100, 2048, 2048]
+    },
+    "arm2": {
         "baudrate": 1000000,
         "device_name": "/dev/ttyACM1",
-        "servo_ids": [7, 8, 9, 10, 11, 12],
+        "servo_ids": [1, 2, 3, 4, 5, 6],
         "velocity_limit": [30, 20, 40, 40, 40, 50],
         "max_position_limit": [3200, 2800, 3000, 3500, 4096, 2800],
         "min_position_limit": [900, 1650, 1100, 600, 0, 2020],
@@ -15,6 +28,6 @@
     "leader": {
         "baudrate": 1000000,
         "device_name": "/dev/ttyACM1",
-        "servo_ids": [7, 8, 9, 10, 11, 12]
+        "servo_ids": [19, 20, 21, 22, 23, 24]
     }
 }

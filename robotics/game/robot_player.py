@@ -4,7 +4,7 @@ from robotics.robot.robot import Robot
 # Load robot settings
 with open('../config.json') as f:
     config = json.load(f)
-    arm_config = config['arm']
+    arm_config = config['arm1']
 
 # Load game positions
 with open('../actions.json') as f:
@@ -36,8 +36,9 @@ def move_piece(start, end):
 
 # Sample game
 
+move_piece('E', '1')
 
-move_piece('A', 'E')
+
 
 
 

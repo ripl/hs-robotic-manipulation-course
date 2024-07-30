@@ -341,4 +341,7 @@ class TicTacToe:
         current_player.move_piece(piece, str(pos))
 
 if __name__ == '__main__':
-    pass
+    p1 = SmartArm('x', lvl = random.randint(0,2))
+    p2 = SmartArm('0', lvl = random.randint(0,2))
+
+    game = TicTacToe

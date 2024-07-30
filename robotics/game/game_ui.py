@@ -165,9 +165,9 @@ class TicTacToeUI:
                 space = self.game.board[index]
                 offset = 125 // 2
                 if space == 'o':
-                    self.screen.blit(O_IMAGE, (250 * i + offset, offset + 750 + 250 * j))
+                    self.screen.blit(X_IMAGE, (250 * i + offset, offset + 750 + 250 * j))
                 elif space == 'x':
-                    self.screen.blit(X_IMAGE, (250 * i + offset, offset +  750 + 250 * j))
+                    self.screen.blit(O_IMAGE, (250 * i + offset, offset +  750 + 250 * j))
         
         # Banner for current player 
         curr_player = self.game.current_player()
@@ -202,9 +202,9 @@ class TicTacToeUI:
                 indx = i + j * 2
                 if spaces[indx] in pieces:
                     if self.game.p2.piece == 'x':
-                        self.screen.blit(X_IMAGE, (1250 - 500 + 250 * (i), 300 * j))
+                        self.screen.blit(O_IMAGE, (825 +(250*i), 60 + 250 * (j) ))
                     else:
-                        self.screen.blit(O_IMAGE, (1250 - 500 + 250 * (i ), 300 * j))
+                        self.screen.blit(X_IMAGE, (825 +(250*i), 60 + 250 * (j) ))
 
     def run(self):
         # Game loop

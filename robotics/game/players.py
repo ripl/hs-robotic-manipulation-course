@@ -67,7 +67,7 @@ class Arm(Player):
         # Load robot settings
         with open(config_path, 'r') as f:
             config = json.load(f)
-            self.arm_config = config['arm']
+            self.arm_config = config['arm1']
 
         # Load game positions
         with open(positions_path, 'r') as f:
@@ -107,7 +107,7 @@ class Arm(Player):
 
         for pose in valid_poses:
             self.arm.set_and_wait_goal_pos(self.positions[start][pose])
-
+            self.arm_config['home_pos']
         for pose in reversed(valid_poses):
             self.arm.set_and_wait_goal_pos(self.positions[end][pose])
 

@@ -98,7 +98,7 @@ def load_robot_settings(args):
     if not config:
         return None, None
 
-    arm_config = config['arm']
+    arm_config = config['arm1']
     lead_config = config['leader'] if args.leader else None
     return arm_config, lead_config
 
