@@ -17,7 +17,9 @@ class BoardVision:
         self.h = None
         self.board_window = [0]*9
         self.board_state = [" "]*9
+
         self.cap = cv2.VideoCapture(1) #Tune this number until you get the USB camera!
+
         self.camera_thread = threading.Thread(target=self.cap_board_state)
         self.camera_thread.daemon = True
         self.camera_thread.start()
@@ -30,25 +32,29 @@ class BoardVision:
         px, py: x, y coordinates of the lower-left point of the rectangle
         pw, ph: width and height of rectangle
 
-        Useful to use: self.x, self.y
+        Useful to use: self.x, self.y (bottom left corner of TicTacToe board)
         """
 
-        #TODO: Part 1: calculate the offset of the center of the piece
-        cx = px + pw / 2
-        cy = py + ph / 2
-        offx = cx - self.x
-        offy = cy - self.y
+        #TODO: Part 1: calculate the offset of the center of the piece from the bottom left corner of board
+        #Replace with your code:
+        offx = None
+        offy = None
         
-        #TODO: Part 2: make sure the detected object is not outside of the board!
+        #Makes sure the detected object is not outside of the board!
         if offx > self.w or offx < 0 or offy > self.h or offy < 0:
             return None
-        #print(offx, offy)
 
-        #TODO: Part 3: Calculate the tile based on the board position!
-        tilew = self.w / 3
-        tileh = self.h / 3
-        col = int(offx // tilew)
-        row = int(offy // tileh)
+        #TODO: Part 2: Calculate width and height of 1 tile!
+        #Replace with your code:
+        tilew = None
+        tileh = None
+
+        #TODO: Part 3: Calculate the column and row of the piece, using tilew, tileh, offx, offy!
+        #Replace with your code:
+        col = None
+        row = None
+
+        #Returns tile index based on row and column
         tile_index = row * 3 + col
         return tile_index
     
@@ -71,16 +77,14 @@ class BoardVision:
         Update each item in self.board_state based on self.board_window!
         """
         prev_board_state = self.board_state.copy()
-        for z, b in enumerate(self.board_window):
-            if abs(b) > 0.2: #Checks if threshold is met to detect piece, you can play with this value if you want! (This value works well, though.)
-                self.board_state[z] = "X" if b > 0 else "O"
-            else:
-                self.board_state[z] = " "
+        #TODO: Part 1: Update self.board_state based on self.board_window. (Use instructions above)
+
+        #Your code goes here!
+
+        #TODO: Part 2: Print out board state
         if self.board_state != prev_board_state:
             print("Board state:")
-            for row in range(3):
-                print(" | ".join(self.board_state[row*3:(row+1)*3]))
-
+            #Your code goes here!
 
     def get_board(self):
         """
