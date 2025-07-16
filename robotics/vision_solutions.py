@@ -7,7 +7,7 @@ class BoardVision:
     """
     Automatically detects the TicTacToe board state using a camera!
     """
-    def __init__(self,main=False,cam=0):
+    def __init__(self,main=False,cam=1):
         """
         No need to change anything!
         """
@@ -93,7 +93,8 @@ class BoardVision:
                 self.true_board_state = self.board_state.copy()
                 print("Board state:")
                 for row in range(3):
-                    print(" | ".join(self.true_board_state[row*3:(row+1)*3]))
+                    print(" | ".join(" " if x is None else x for x in self.true_board_state[row*3:(row+1)*3]))
+
 
     def get_board(self):
         """
@@ -217,17 +218,20 @@ class BoardVision:
                     break
         cap.release()
         cv2.destroyAllWindows()
-main=True
-board = BoardVision(True)
 
-if not main:
-    while True:
-        if board.latest_frame is not None:
-            print("A")
-            cv2.imshow("Camera View", board.latest_frame)
+        
+if __name__ == "__main__":
+    main=True
+    board = BoardVision(True)
 
-            # Press 'q' to quit
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        board.wait_for_move()
+    if not main:
+        while True:
+            if board.latest_frame is not None:
+                print("A")
+                cv2.imshow("Camera View", board.latest_frame)
+
+                # Press 'q' to quit
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+            board.wait_for_move()
 

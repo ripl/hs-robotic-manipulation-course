@@ -94,7 +94,7 @@ class BoardVision:
                 self.true_board_state = self.board_state.copy()
                 print("Board state:")
                 for row in range(3):
-                    print(" | ".join(self.true_board_state[row*3:(row+1)*3]))
+                    print(" | ".join(" " if x is None else x for x in self.true_board_state[row*3:(row+1)*3]))
 
     
     def get_board(self):
