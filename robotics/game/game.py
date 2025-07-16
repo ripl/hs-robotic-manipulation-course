@@ -1,6 +1,7 @@
 import random, os, sys
 from robotics.robot.robot import Robot
 from players import Player, Arm, SmartArm
+from robotics.vision_solutions import BoardVision
 
 class TicTacToe:
     """
@@ -352,6 +353,7 @@ if __name__ == '__main__':
     p1 = Player('x')
     p2 = SmartArm('o', lvl)
     game = TicTacToe(p1, p2)
+    cam = BoardVision()
 
     os.system('clear')
 
@@ -363,11 +365,11 @@ if __name__ == '__main__':
 
     while True:
         try:
-            user_input = input("Enter the position: ")
-            if user_input.lower() == 'q':
-                print("Quitting the game.")
-                break
-            pos = int(user_input)
+            # user_input = input("Enter the position: ")
+            # pos = int(user_input)
+            new_board = cam.wait_for_move()
+            pos = None
+
             game.place_piece(pos)
             game.smart_place_piece()
         except ValueError:

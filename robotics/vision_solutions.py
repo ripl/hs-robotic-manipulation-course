@@ -7,7 +7,7 @@ class BoardVision:
     """
     Automatically detects the TicTacToe board state using a camera!
     """
-    def __init__(self):
+    def __init__(self,main=False,cam=0):
         """
         No need to change anything!
         """
@@ -18,11 +18,14 @@ class BoardVision:
         self.board_window = [0]*9
         self.board_state = [None]*9
         self.old_board_state = None
+        self.true_board_state = self.board_state.copy()
         self.confidence = 0
-        self.confidence_threshold = 200
-
-        self.cap = cv2.VideoCapture(1) #Tune this number until you get the USB camera!
-
+        self.confidence_threshold = 100
+        self.latest_frame = None
+        self.main = main
+        self.cap = cv2.VideoCapture(cam) #Tune this number until you get the USB camera!
+        if main:
+            self.cap_board_state()
         self.camera_thread = threading.Thread(target=self.cap_board_state)
         self.camera_thread.daemon = True
         self.camera_thread.start()
@@ -35,29 +38,25 @@ class BoardVision:
         px, py: x, y coordinates of the lower-left point of the rectangle
         pw, ph: width and height of rectangle
 
-        Useful to use: self.x, self.y (bottom left corner of TicTacToe board)
+        Useful to use: self.x, self.y
         """
 
-        #TODO: Part 1: calculate the offset of the center of the piece from the bottom left corner of board
-        #Replace with your code:
-        offx = None
-        offy = None
+        #TODO: Part 1: calculate the offset of the center of the piece
+        cx = px + pw / 2
+        cy = py + ph / 2
+        offx = cx - self.x
+        offy = cy - self.y
         
-        #Makes sure the detected object is not outside of the board!
+        #TODO: Part 2: make sure the detected object is not outside of the board!
         if offx > self.w or offx < 0 or offy > self.h or offy < 0:
             return None
+        #print(offx, offy)
 
-        #TODO: Part 2: Calculate width and height of 1 tile!
-        #Replace with your code:
-        tilew = None
-        tileh = None
-
-        #TODO: Part 3: Calculate the column and row of the piece, using tilew, tileh, offx, offy!
-        #Replace with your code:
-        col = None
-        row = None
-
-        #Returns tile index based on row and column
+        #TODO: Part 3: Calculate the tile based on the board position!
+        tilew = self.w / 3
+        tileh = self.h / 3
+        col = int(offx // tilew)
+        row = int(offy // tileh)
         tile_index = row * 3 + col
         return tile_index
     
@@ -80,11 +79,11 @@ class BoardVision:
         Update each item in self.board_state based on self.board_window!
         """
         prev_board_state = self.board_state.copy()
-        #YOUR CODE GOES HERE!
-
-        # for each item in self.board_window, update self.board_state accordingly.
-
-        #Ignore code down here
+        for z, b in enumerate(self.board_window):
+            if abs(b) > 0.2: #Checks if threshold is met to detect piece, you can play with this value if you want! (This value works well, though.)
+                self.board_state[z] = "x" if b > 0 else "o"
+            else:
+                self.board_state[z] =  None
         if self.board_state != prev_board_state:
             self.confidence = 0
             print("Changed board:", self.board_state)
@@ -96,7 +95,6 @@ class BoardVision:
                 for row in range(3):
                     print(" | ".join(self.true_board_state[row*3:(row+1)*3]))
 
-    
     def get_board(self):
         """
         No changes needed!
@@ -118,13 +116,13 @@ class BoardVision:
         # if ret:
         #     cv2.imshow("Frame", frame)
         return self.get_board()
-    
-    def get_piece_change(self, old_board):
+
+    def get_piece_change(self):
         count = 0
         changed = None
         new_piece = None
 
-        for i, piece in enumerate(old_board):
+        for i, piece in enumerate(self.old_board_state):
             if self.true_board_state[i] != piece:
                 count += 1
                 if count > 1:
@@ -132,7 +130,7 @@ class BoardVision:
                 new_piece = self.true_board_state[i]
                 changed = i
         return changed, new_piece
-
+                
     def process_detected_piece(self, px, py, pw, ph, is_red):
         """
         No changes needed!
@@ -175,6 +173,7 @@ class BoardVision:
         upper_green = np.array([85, 255, 255])
         while True:
             ret, frame = cap.read()
+            #self.latest_frame = frame.copy()
             if not ret:
                 break
             board_seen = False
@@ -212,12 +211,23 @@ class BoardVision:
                         self.process_detected_piece(x,y,w,h,False)
                 for n in range(len(self.board_window)):
                     self.board_window[n] = self.board_window[n]*0.9
+            if self.main:
+                cv2.imshow("Camera View", frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
         cap.release()
         cv2.destroyAllWindows()
+main=True
+board = BoardVision(True)
 
-
-if __name__ == "__main__":
-    board = BoardVision()
+if not main:
     while True:
-        time.sleep(1)
+        if board.latest_frame is not None:
+            print("A")
+            cv2.imshow("Camera View", board.latest_frame)
+
+            # Press 'q' to quit
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        board.wait_for_move()
 
