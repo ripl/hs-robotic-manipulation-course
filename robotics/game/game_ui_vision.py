@@ -1,6 +1,6 @@
 import pygame
-from game import TicTacToe
-from players import Player, Arm, SmartArm
+from robotics.game.game import TicTacToe
+from robotics.game.players import Player, Arm, SmartArm
 from robotics.robot.robot import Robot
 import sys
 from robotics.vision_solutions import BoardVision

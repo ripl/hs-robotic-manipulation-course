@@ -1,6 +1,6 @@
 import random, os, sys
 from robotics.robot.robot import Robot
-from players import Player, Arm, SmartArm
+from robotics.game.players import Player, Arm, SmartArm
 from robotics.vision_solutions import BoardVision
 
 class TicTacToe:

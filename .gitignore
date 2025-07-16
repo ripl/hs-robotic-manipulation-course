@@ -162,3 +162,5 @@ cython_debug/
 #.idea/
 
 robotics/actions.json
+
+#robotics/vision.py

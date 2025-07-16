@@ -54,7 +54,7 @@ class Arm(Player):
     >>> p2
     ArmPlayer 2 is "o"
     """
-    def __init__(self, piece, config_path='../config.json', positions_path='../actions.json'):
+    def __init__(self, piece, config_path='robotics/config.json', positions_path='robotics/actions.json'):
         """
         Create an Arm instance, inherit from the Player class.
 
