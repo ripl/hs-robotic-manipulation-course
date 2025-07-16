@@ -7,7 +7,7 @@ class BoardVision:
     """
     Automatically detects the TicTacToe board state using a camera!
     """
-    def __init__(self):
+    def __init__(self,main=False,cam=1):
         """
         No need to change anything!
         """
@@ -20,12 +20,18 @@ class BoardVision:
         self.old_board_state = None
         self.confidence = 0
         self.confidence_threshold = 200
+        self.main = main
 
-        self.cap = cv2.VideoCapture(1) #Tune this number until you get the USB camera!
 
+        self.cap = cv2.VideoCapture(cam) #Tune this number until you get the USB camera!
+
+        self.cap = cv2.VideoCapture(cam) #Tune this number until you get the USB camera!
+        if main:
+            self.cap_board_state()
         self.camera_thread = threading.Thread(target=self.cap_board_state)
         self.camera_thread.daemon = True
         self.camera_thread.start()
+
 
 
     def get_tile_from_piece(self, px, py, pw, ph):
@@ -40,8 +46,8 @@ class BoardVision:
 
         #TODO: Part 1: calculate the offset of the center of the piece from the bottom left corner of board
         #Replace with your code:
-        offx = None
-        offy = None
+        offx = 1000
+        offy = 1000
         
         #Makes sure the detected object is not outside of the board!
         if offx > self.w or offx < 0 or offy > self.h or offy < 0:
@@ -175,6 +181,7 @@ class BoardVision:
         upper_green = np.array([85, 255, 255])
         while True:
             ret, frame = cap.read()
+            #self.latest_frame = frame.copy()
             if not ret:
                 break
             board_seen = False
@@ -212,12 +219,26 @@ class BoardVision:
                         self.process_detected_piece(x,y,w,h,False)
                 for n in range(len(self.board_window)):
                     self.board_window[n] = self.board_window[n]*0.9
+            if self.main:
+                cv2.imshow("Camera View", frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
         cap.release()
         cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
-    board = BoardVision()
-    while True:
-        time.sleep(1)
+    main=True
+    board = BoardVision(True)
+
+    if not main:
+        while True:
+            if board.latest_frame is not None:
+                print("A")
+                cv2.imshow("Camera View", board.latest_frame)
+
+                # Press 'q' to quit
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+            board.wait_for_move()
 
