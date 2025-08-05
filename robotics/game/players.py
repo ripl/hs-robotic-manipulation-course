@@ -67,7 +67,7 @@ class Arm(Player):
         # Load robot settings
         with open(config_path, 'r') as f:
             config = json.load(f)
-            self.arm_config = config['arm1']
+            self.arm_config = config['arm']
 
         # Load game positions
         with open(positions_path, 'r') as f:
@@ -107,7 +107,7 @@ class Arm(Player):
 
         for pose in valid_poses:
             self.arm.set_and_wait_goal_pos(self.positions[start][pose])
-            self.arm_config['home_pos']
+
         for pose in reversed(valid_poses):
             self.arm.set_and_wait_goal_pos(self.positions[end][pose])
 
@@ -197,7 +197,8 @@ class SmartArm(Arm):
                 return
         
         for move in possible_moves:
-            game.update()
+            #game.update()
+            #^
             self.pseudo_place_piece(game, move, opp_piece)
             block = game.current_player_wins()
             self.pseudo_undo(game, move)
@@ -205,7 +206,9 @@ class SmartArm(Arm):
                 game.place_piece(move)
                 return
             
-        self.novice(game)
+        if not win and not block:
+            self.novice(game)
+        # make an if statement
        
 
     def minimax(self, is_max_turn, maximizer_mark, game, depth):
