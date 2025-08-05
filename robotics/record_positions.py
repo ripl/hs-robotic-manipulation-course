@@ -82,10 +82,10 @@ def main():
     arm.set_and_wait_goal_pos(arm_config['home_pos'])
 
     # Create actions.json if it does not exist
-    if not os.path.exists('actions_c4.json'):
-        with open('actions_c4.json', 'w') as f:
+    if not os.path.exists('actions.json'):
+        with open('actions.json', 'w') as f:
             json.dump({}, f)
-    with open('actions_c4.json') as f:
+    with open('actions.json') as f:
         positions = json.load(f)
 
     # Record positions for each square and pose type
@@ -103,7 +103,7 @@ def main():
                 pos = record_position_with_leader(arm, leader, square, pose_type)
             if pos is not None:
                 positions[square][pose_type] = pos
-    with open('actions_c4.json', 'w') as f:
+    with open('actions.json', 'w') as f:
         json.dump(positions, f, indent=4)
 
     # Go to rest position and disable torque
