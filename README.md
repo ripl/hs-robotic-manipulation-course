@@ -13,16 +13,37 @@ Clone the repo and create a virtual environment. We use Python 3.10.12.
 python3 -m venv env
 
 # Add the project to the PYTHONPATH in the virtual environment
-echo 'export PYTHONPATH="$PYTHONPATH:/home/school/Desktop/hs-robotic-manipulation-course"' >> env/bin/activate
-
+echo 'export PYTHONPATH="$PYTHONPATH:/absolute/path/to/hs-robotic-manipulation-course"' >> env/bin/activate
+# change this to be your directory path to hs-robotic-manipulation-course
+# cd into hs-robotic-manipulation-course then run pwd to find your path
+# ex: echo 'export PYTHONPATH="$PYTHONPATH:/home/ttic/Desktop/hs-robotic-manipulation-course"' >> env/bin/activate
 
 # Activate the virtual environment
 source env/bin/activate
 
 # Install the dependencies
 pip install -r requirements.txt
+#only necessary the first time
 
 # To deactivate the virtual environment
+
+deactivate
+
+
+
+#NEW WAY TO RUN VIRTUAL ENVIRONMENT USING 'virtual.sh'
+#virtual.sh is a shell file that will do most of the work for you
+#running './virtual.sh' runs the file then will prompt you to complete setting up the environment by activating it
+#steps
+#Run the shell file
+./virtual
+#Activate the environment
+source env/bin/activate
+#If it is the first time activating the environment on the device run 
+pip install -r requirements.txt
+
+
+#Deactivate the virtual environment 
 deactivate
 ```
 
