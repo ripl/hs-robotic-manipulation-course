@@ -3,13 +3,18 @@ from robotics.robot.robot import Robot
 
 # Square and pose types
 SQUARES = ['A', 'B', 'C', 'D', 'E', 'F', '0', '1', '2', '3', '4', '5', '6', '7', '8']
+#For Recording TicTacToe Positions
+#SQUARES = ['connect','1','2','3','4','5','6','7']
+#For Recording Connect4 Positions
 POSE_TYPES = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Record positions for tic-tac-toe game.')
-    parser.add_argument('-l', '--leader', action='store_true', default=False, 
+    parser.add_argument('-l', '--leader', action='store_true', default=True, 
                         help='Enable teleoperation using a leader arm.')
     return parser.parse_args()
+    #variable default initially set to False and not changed elsewhere setting it to True lets the leader arm function properly
+
 
 def load_robot_settings(args):
     with open('config.json') as f:
@@ -77,10 +82,10 @@ def main():
     arm.set_and_wait_goal_pos(arm_config['home_pos'])
 
     # Create actions.json if it does not exist
-    if not os.path.exists('actions.json'):
-        with open('actions.json', 'w') as f:
+    if not os.path.exists('actions_c4.json'):
+        with open('actions_c4.json', 'w') as f:
             json.dump({}, f)
-    with open('actions.json') as f:
+    with open('actions_c4.json') as f:
         positions = json.load(f)
 
     # Record positions for each square and pose type
@@ -98,7 +103,7 @@ def main():
                 pos = record_position_with_leader(arm, leader, square, pose_type)
             if pos is not None:
                 positions[square][pose_type] = pos
-    with open('actions.json', 'w') as f:
+    with open('actions_c4.json', 'w') as f:
         json.dump(positions, f, indent=4)
 
     # Go to rest position and disable torque
