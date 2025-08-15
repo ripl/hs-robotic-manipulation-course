@@ -35,8 +35,11 @@ deactivate
 #virtual.sh is a shell file that will do most of the work for you
 #running './virtual.sh' runs the file then will prompt you to complete setting up the environment by activating it
 #steps
+#On first run make the file executable
+#in the hs-robotic-manipulation-course path
+chmod +x ./virtual.sh
 #Run the shell file
-./virtual
+./virtual.sh
 #Activate the environment
 source env/bin/activate
 #If it is the first time activating the environment on the device run 
