@@ -1,33 +1,44 @@
 import pygame
 from game import TicTacToe
 from players import Player, Arm, SmartArm
+from robotics.robot.robot import Robot
 import sys
 from robotics.vision import BoardVision
 import time
 
 class TicTacToeUI:
-    def __init__(self, game=None, size=1500):
+    def __init__(self, game=None, size=750):
         # General setup
         pygame.init()
         self.clock = pygame.time.Clock()
-        
+        self.size = size
+        self.half_size=size//2
+        self.third_size=size//3
+        self.sixth_size=size//6 
         # Setting up the main window
-        self.WIDTH, self.HEIGHT = size - 250, size
+        self.WIDTH, self.HEIGHT = size - self.sixth_size, size
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         pygame.display.set_caption("TTIC Interface")
         
+        # Pieces
+        self.X_IMAGE = pygame.transform.scale(pygame.image.load("images/x_piece.png"), 
+                                         (self.size//10, self.size//10))
+        self.O_IMAGE = pygame.transform.scale(pygame.image.load("images/o_piece.png"), 
+                                         (self.size//10, self.size//10))
+
         # Colors
         self.blk = (0, 0, 0)
         self.white = (255, 255, 255)
         self.light_grey = (211, 211, 211)
+        self.green = (92, 202, 80)
         self.dark_blue = (0, 0, 209)
         self.dark_grey = (169, 169, 169)
         
         # Font setup
         pygame.font.init()
-        self.font_pieces = pygame.font.SysFont(None, int(60 * self.HEIGHT / 600))
-        self.font_large = pygame.font.SysFont(None, int(30 * self.HEIGHT / 600))
-        self.font_small = pygame.font.SysFont(None, int(24 * self.HEIGHT / 600))
+        self.font_pieces = pygame.font.SysFont(None, int(self.HEIGHT // 10))
+        self.font_large = pygame.font.SysFont(None, int(self.HEIGHT // 20))
+        self.font_small = pygame.font.SysFont(None, int(self.HEIGHT // 25))
         
         # Initialize boards
         self.init_boards()
@@ -112,7 +123,7 @@ class TicTacToeUI:
     def draw_boards(self):
         # Draw the board of rectangles and labels
         for index, rect in enumerate(self.board):
-            pygame.draw.rect(self.screen, self.blk, rect, self.border_width)
+            pygame.draw.rect(self.screen, self.green, rect, self.border_width)
             label = self.font_small.render(str(index), True, self.blk)
             self.screen.blit(label, (rect.x + 5, rect.y + 5))  # Slightly offset from top left corner
         
@@ -140,11 +151,11 @@ class TicTacToeUI:
         :param pos: The position where the player has clicked.
         """
         x, y = pos[0], pos[1]
-        if 0 <= x <= 750 and 750 <= y <= 1500:
+        if 0 <= x <= self.half_size and self.half_size <= y <= self.size:
             for i in range(3):
                 for j in range(3):
-                    if 250 * i  <= x <= 250 * (i + 1):
-                        if 750 + (250 * j) <= y <= 750 + (250 * (j + 1)):
+                    if self.sixth_size * i  <= x <= self.sixth_size * (i + 1):
+                        if self.half_size + (self.sixth_size * j) <= y <= self.half_size + (self.sixth_size * (j + 1)):
                             move = i + j * 3
                             self.game.place_piece(move)
 
@@ -153,45 +164,48 @@ class TicTacToeUI:
         self.draw_current_board()
         pygame.display.flip()
 
-    def draw_current_board(self):
-        """
-        Update the board of the GUI.
-        """
-        X_IMAGE = pygame.transform.scale(pygame.image.load("images/x.png"), (100, 100))
-        O_IMAGE = pygame.transform.scale(pygame.image.load("images/o.png"), (100, 100))
-
-        for i in range(3):
-            for j in range(3):
-                index = i + j * 3
-                space = self.game.board[index]
-                offset = 125 // 2
-                if space == 'o':
-                    self.screen.blit(O_IMAGE, (250 * i + offset, offset + 750 + 250 * j))
-                elif space == 'x':
-                    self.screen.blit(X_IMAGE, (250 * i + offset, offset +  750 + 250 * j))
-        
+    def draw_banner(self):
         # Banner for current player 
-        curr_player = self.game.current_player()
-        
-        if self.game.get_winner() is not None:
-            winner = self.game.get_winner()
+        winner = self.game.get_winner()
+        if winner is not None:
             if winner == 'x':
                 player = 1
             else:
                 player = 2 
             label = self.font_small.render(f'Player {player} Wins!', True, (34,139,34))
-            self.screen.blit(label, (210,100))
+            self.screen.blit(label, (self.size//7,self.size//15))
+        elif self.game.determine_draw():
+            label = self.font_small.render("Tie. It's a cat's game", True, (0,0,0))
+            self.screen.blit(label, (self.size//12,self.size//15))
         else: 
-            curr_player == self.game.current_player()
+            curr_player = self.game.current_player()
             if curr_player == 'x':
                 player = 1
                 label = self.font_small.render(f'Player {player} is the current player.', True, (255,0,0))
-                self.screen.blit(label, (120,100))
+                self.screen.blit(label, (self.size//12,self.size//15))
             else:
                 player = 2
                 label = self.font_small.render(f'Player {player} is the current player.', True, (0,0,255))
-                self.screen.blit(label, (120,100))
-            
+                self.screen.blit(label, (self.size//12,self.size//15))
+
+    def draw_current_board(self):
+        """
+        Update the board of the GUI.
+        """
+
+
+        offset = self.size // 32 
+        for i in range(3):
+            for j in range(3):
+                index = i + j * 3
+                space = self.game.board[index]
+                if space == 'o':
+                    self.screen.blit(self.O_IMAGE, (self.sixth_size * i + offset, 
+                                               offset + self.half_size + self.sixth_size * j))
+                elif space == 'x':
+                    self.screen.blit(self.X_IMAGE, (self.sixth_size * i + offset,
+                                            offset +  self.half_size + self.sixth_size * j))
+                    
         #Available pieces 
 
         spaces = list(self.top_right_letters.values())
@@ -203,9 +217,13 @@ class TicTacToeUI:
                 indx = i + j * 2
                 if spaces[indx] in pieces:
                     if self.game.p2.piece == 'x':
-                        self.screen.blit(X_IMAGE, (1250 - 500 + 250 * (i), 300 * j))
+                        self.screen.blit(self.X_IMAGE, 
+                                         (self.half_size + self.sixth_size * (i) + offset, 
+                                          self.sixth_size * j + offset))
                     else:
-                        self.screen.blit(O_IMAGE, (1250 - 500 + 250 * (i ), 300 * j))
+                        self.screen.blit(self.O_IMAGE, 
+                                         (self.half_size + self.sixth_size * (i) + offset,
+                                          self.sixth_size * j + offset))
 
     def run(self):
         # Game loop
@@ -213,11 +231,12 @@ class TicTacToeUI:
         self.screen.fill(self.light_grey)
         self.draw_boards()
         self.draw_current_board()
+        self.draw_banner()
     
-            # Update the screen
+        # Update the screen
         pygame.display.flip()
-        while True:
-
+        playing = True
+        while playing:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     smart_arm = self.game.p2.arm
@@ -226,44 +245,51 @@ class TicTacToeUI:
                     pygame.quit()
                     sys.exit()
 
-            play_detected = False
-            while not play_detected:
-                vision.wait_for_move()
-                time.sleep(0.1)
-                tile, new_piece = vision.get_piece_change()
-                if tile is None or tile > 8:
-                    continue
-                if new_piece == 'x':
-                    play_detected = True
-            self.game.place_piece(tile)
-
-            # Fill the background with light grey color
-            self.screen.fill(self.light_grey)
-            # Draw all the boards
-            self.draw_boards()
-            # Draw moves
-            self.draw_current_board()
-    
-            # Update the screen
-            pygame.display.flip()
-            # self.clock.tick(60)  # Frames per second
-
-            print("here")
-            self.smart_update()
-            # self.screen.fill(self.light_grey)
-            # Draw all the boards
-            self.draw_boards()
-            # Draw moves s
-            self.draw_current_board()
-    
-            # Update the screen
-            pygame.display.flip()
-            #vision.wait_for_move()
-            self.clock.tick(60)  # Frames per second
+            if self.game.get_winner() is None:             
+                play_detected = False
+                while not play_detected:
+                    vision.wait_for_move()
+                    time.sleep(0.1)
+                    tile, new_piece = vision.get_piece_change()
+                    if tile is None or tile > 8:
+                        continue
+                    if new_piece == self.game.p1.piece:
+                        play_detected = True
+                self.game.place_piece(tile)
+                # Fill the background with light grey color
+                self.screen.fill(self.light_grey)
+                # Draw all the boards
+                self.draw_boards()
+                # Draw moves
+                self.draw_current_board()
+                self.draw_banner()
+                # Update the screen
+                pygame.display.flip()
+                self.clock.tick(60)  # Frames per second
+                if self.game.determine_draw():
+                    playing=False
+                else:
+                    self.smart_update()
+                    self.screen.fill(self.light_grey)
+                    # Draw all the boards
+                    self.draw_boards()
+                    # Draw moves s
+                    self.draw_current_board()
+                    self.draw_banner()
+                    pygame.display.flip()
+                    self.clock.tick(60)  # Frames per second
+            else:
+                playing = False
+        smart_arm = self.game.p2.arm
+        smart_arm.set_and_wait_goal_pos([2048, 1800, 1850, 1100, 2048, 2048])
+        smart_arm._disable_torque()                 
+        pygame.time.wait(3000)
+        pygame.quit()
+        sys.exit()
 
 if __name__ == "__main__":
-    p1, p2 = Player('x'), SmartArm('o', lvl=2)
-    vision = BoardVision(False, 0)
+    p1, p2 = Player('x'), SmartArm('o', lvl=0)
+    vision = BoardVision(False, 4)
     game = TicTacToe(p1, p2)
 
     game = TicTacToeUI(game)
