@@ -193,6 +193,10 @@ class TicTacToe:
         :param pos: The position on the board.
         :returns: True if the move is valid, False otherwise.
         """
+        if pos == None:
+            print('AI was unable to find a move. Consider resetting the game.')
+            return False
+
         if not 0 <= pos < 9:
             print('Invalid space!')
             return False
