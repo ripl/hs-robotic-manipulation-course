@@ -1,4 +1,4 @@
-import os, json, threading, argparse
+import os, json, threading, argparse, time
 from robotics.robot.robot import Robot
 
 # Square and pose types
@@ -8,6 +8,8 @@ POSE_TYPES = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Record positions for tic-tac-toe game.')
     parser.add_argument('-l', '--leader', action='store_true', default=False, 
+                        help='Enable teleoperation using a leader arm.')
+    parser.add_argument('-d', '--delay', action='store_true', default=False, 
                         help='Enable teleoperation using a leader arm.')
     return parser.parse_args()
 
@@ -50,12 +52,20 @@ def record_position(arm, square, pose_type):
     return pos
 
 # Function to record positions with leader arm
-def record_position_with_leader(arm, leader, square, pose_type):
+def record_position_with_leader(arm, leader, square, pose_type, delay=0):
     print(f'Move the arm to the {pose_type} position of square {square}.')
     # Wait for user input to stop teleoperation
     stop = threading.Event()
     def wait_for_input(stop):
         input('Press enter to record.')
+
+        if delay > 0:
+            t = delay
+            while t > 0:
+                print(t)
+                t -= 1
+                time.sleep(1)
+
         stop.set()
     thread = threading.Thread(target=wait_for_input, args=(stop,))
     thread.start()
@@ -83,19 +93,26 @@ def main():
     with open('actions.json') as f:
         positions = json.load(f)
 
+    delay = 0
+    if args.delay:
+        delay = 10
+
     # Record positions for each square and pose type
     for square in SQUARES:
-        print(f'Record positions for square {square}. Press enter to record. Press s to skip.')
+        print(f'Record positions for square {square}. Press enter to record. Press s to skip. Press q to skip all squares.')
         user_input = input()
         if user_input == 's':
             continue
+        if user_input == 'q':
+            break
         if square not in positions:
             positions[square] = {}
+
         for pose_type in POSE_TYPES:
             if not args.leader:
                 pos = record_position(arm, square, pose_type)
             else:
-                pos = record_position_with_leader(arm, leader, square, pose_type)
+                pos = record_position_with_leader(arm, leader, square, pose_type, delay)
             if pos is not None:
                 positions[square][pose_type] = pos
     with open('actions.json', 'w') as f:

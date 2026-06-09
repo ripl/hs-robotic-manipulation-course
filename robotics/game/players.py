@@ -165,7 +165,10 @@ class SmartArm(Arm):
         """
         possible_moves = self.get_possible_moves(game)
 
-        random_move = random.choice(possible_moves)
+        if len(possible_moves) > 0:
+            random_move = random.choice(possible_moves)
+        else:
+            return 0
 
         game.place_piece(random_move)
 
