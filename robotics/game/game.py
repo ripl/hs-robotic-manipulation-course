@@ -193,6 +193,10 @@ class TicTacToe:
         :param pos: The position on the board.
         :returns: True if the move is valid, False otherwise.
         """
+        if pos == None:
+            print('AI was unable to find a move. Consider resetting the game.')
+            return False
+
         if not 0 <= pos < 9:
             print('Invalid space!')
             return False
@@ -376,5 +380,6 @@ if __name__ == '__main__':
             print(f"An error occurred: {e}")
             
     # game.reset()
-    p2.arm.set_and_wait_goal_pos([2048, 1600, 1070, 2200, 2048, 2048])
+    #p2.arm.set_and_wait_goal_pos([2048, 1600, 1070, 2200, 2048, 2048])
+    p2.arm.set_and_wait_goal_pos([2048, 1800, 1850, 1100, 2048, 2048])
     p2.arm._disable_torque()

@@ -85,12 +85,15 @@ def main():
 
     # Record positions for each square and pose type
     for square in SQUARES:
-        print(f'Record positions for square {square}. Press enter to record. Press s to skip.')
+        print(f'Record positions for square {square}. Press enter to record. Press s to skip. Press q to skip all squares.')
         user_input = input()
         if user_input == 's':
             continue
+        if user_input == 'q':
+            break
         if square not in positions:
             positions[square] = {}
+
         for pose_type in POSE_TYPES:
             if not args.leader:
                 pos = record_position(arm, square, pose_type)
