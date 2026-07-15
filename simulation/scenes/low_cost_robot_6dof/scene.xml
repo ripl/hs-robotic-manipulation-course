@@ -1,0 +1,47 @@
+<mujoco model="low_cost_robot scene">
+  <!-- The timestep has a big influence on the contacts stability -->
+  <option cone="elliptic" impratio="10" timestep="0.001"/>
+
+  <include file="low_cost_robot.xml"/>
+
+  <statistic center="0 0 0.1" extent="0.6"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="140" elevation="-30"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3"
+      markrgb="0.8 0.8 0.8" width="300" height="300"/>
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2"/>
+    <mesh file="o.stl" scale="0.001 0.001 0.001"/>
+
+    <texture name="board" type="2d" file="board.png"/>
+    <texture name="board_bump" type="2d" file="metal.png"/>
+
+    <material name="board" reflectance="0.3" specular="0.6" shininess="1.0">
+      <layer texture="board" role="rgb"/>
+      <layer texture="board_bump" role="normal"/>
+    </material>
+
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
+    <camera name="closeup" pos="-0.078 -0.148 0.330" xyaxes="0.973 -0.230 0.000 0.167 0.705 0.690"/>
+
+    <geom name="board" type="plane" material="board" size="0.104 0.13459 0.01" pos="-0.035 0.1337 0" quat="0 0 0 1"/>
+
+    <body name="o_piece" pos="0 0.25 0">
+      <freejoint name="o_piece_joint"/>
+
+      <geom type="mesh" mesh="o" rgba="0 0 1 1" contype="0" conaffinity="0" density="840"/>
+      <geom type="cylinder" size="0.015 0.004" pos="0 0 0" euler="0 0 0" contype="1" conaffinity="1" density="0" rgba="1 0 0 0.3" group="3"/>
+      <geom type="cylinder" size="0.005 0.0085" pos="0 0 0.0105" euler="0 0 0" contype="1" conaffinity="1" density="0" rgba="1 0 0 0.3" group="3"/>
+    </body>
+  </worldbody>
+
+</mujoco>
