@@ -4,3 +4,4 @@ opencv-python==4.13.0.92
 pandas==2.2.2
 pygame==2.6.1
 pyserial==3.5
+mujoco
