@@ -5,8 +5,6 @@ import time
 import argparse
 import sys
 
-TIMER_DELAY = 4
-
 class BoardVision:
     """
     Automatically detects the TicTacToe board state using a camera!
@@ -30,17 +28,20 @@ class BoardVision:
 
         # Screenshot settings
         self.use_timer = use_timer
-        self.screenshot_interval = TIMER_DELAY  # seconds, only used if use_timer is True
+        self.screenshot_interval = 0.5  # seconds, only used if use_timer is True
         self.screenshot_count = 0
         self.last_screenshot_time = 0
 
-        # Fixed: previously cap_board_state() was called here directly when
-        # main=True, AND again in the thread below, causing two loops to
-        # race on the same VideoCapture object. Now it only ever runs once,
-        # in the thread.
-        self.camera_thread = threading.Thread(target=self.cap_board_state)
-        self.camera_thread.daemon = True
-        self.camera_thread.start()
+        self.camera_thread = None
+        if self.main:
+            # GUI calls (imshow/waitKey) must happen on the main thread on macOS,
+            # so run the loop directly here instead of in a background thread.
+            self.cap_board_state()
+        else:
+            # No GUI involved, so it's safe to run this in a background thread.
+            self.camera_thread = threading.Thread(target=self.cap_board_state)
+            self.camera_thread.daemon = True
+            self.camera_thread.start()
 
     def get_cap(self):
         return self.cap
@@ -91,8 +92,7 @@ class BoardVision:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="TicTacToe BoardVision camera capture")
-    parser.add_argument("-t", action="store_true", help="Automatically take a screenshot every 4 seconds instead of capturing on keypress")
+    parser.add_argument("-t", action="store_true", help="Automatically take a screenshot every 0.5 seconds instead of capturing on keypress")
     args = parser.parse_args()
 
-    main = True
     board = BoardVision(True, 0, use_timer=args.t) #<- change the number around until you connect to the usb camera
