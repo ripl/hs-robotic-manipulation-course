@@ -1,5 +1,6 @@
-import os, json, threading, argparse
-from robotics.robot.robot import Robot
+import os, json, threading, argparse, sys
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+from robot.robot import Robot
 
 # Square and pose types
 SQUARES = ['A', 'B', 'C', 'D', 'E', 'F', '0', '1', '2', '3', '4', '5', '6', '7', '8']

@@ -7,11 +7,14 @@ import mujoco.viewer
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
+ROBOTICS = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+if str(ROBOTICS) not in sys.path:
+    sys.path.insert(0, str(ROBOTICS))
 
-from robotics.robot.robot import Robot
-from robotics.simulation.interface import SimulatedRobot
+from robot.robot import Robot
+from simulation.interface import SimulatedRobot
 
 # Per-joint sign mapping from leader hardware to MuJoCo model joints.
 # Joint 3 is kept positive so elbow direction matches the real robot.
