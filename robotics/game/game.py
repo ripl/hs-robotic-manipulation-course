@@ -112,13 +112,14 @@ class TicTacToe:
     >>> game.undo()
     This is the initial state of the board.
     """
-    def __init__(self, player1, player2, board=None):
+    def __init__(self, player1, player2, board=None, auto_start=True):
         """
         Create an instance of TicTacToe.
         
         :param player1: The first player.
         :param player2: The second player.
         :param board: Optional initial board state.
+        :param auto_start: Whether to automatically play the first move if player1 is SmartArm.
         """
         self.p1 = player1
         self.p2 = player2
@@ -145,7 +146,8 @@ class TicTacToe:
         print(self)
 
         # If the current player is a SmartArm, play a piece.
-        self.smart_place_piece()
+        if auto_start:
+            self.smart_place_piece()
 
     def current_player(self):
         """
@@ -347,40 +349,67 @@ class TicTacToe:
 
 if __name__ == '__main__':
 
-    print("Welcome to TicTacToe. \nYou are Player 1. \nPlayer 2 is the Smart Arm.\n")
+    print("Welcome to TicTacToe.\n")
     print("AI difficulty: ")
-    print("   Novice  (1)")
-    print("   Pro     (2)")
-    print("   Expert  (3)")
-    lvl = int(input("\nChoose Wisely: ").strip())
+    print("   Novice  (0)")
+    print("   Pro     (1)")
+    print("   Expert  (2)")
+    lvl_in = input("\nChoose Wisely (0-2, default 1): ").strip()
+    lvl = int(lvl_in) if lvl_in in ('0', '1', '2') else 1
 
-    p1 = Player('x')
-    p2 = SmartArm('o', lvl)
-    game = TicTacToe(p1, p2)
+    print("\nWho starts first?")
+    print("   1: Human (Red 'x')")
+    print("   2: Smart Arm (Red 'x')")
+    first = input("Choose starting player (1 or 2, default 1): ").strip()
+
+    if first == '2':
+        p1 = SmartArm('x', lvl)
+        p2 = Player('o')
+    else:
+        p1 = Player('x')
+        p2 = SmartArm('o', lvl)
+
+    arm_player = p1 if isinstance(p1, Arm) else p2
+
+    game = TicTacToe(p1, p2, auto_start=False)
 
     os.system('clear')
 
     print(p1)
     print(p2)
     print("Enter a position (0-8) to place your piece. \nThe SmartArm will play automatically.")
-    print("Enter 'q' at any time to quit. Press Enter to start the game.")
+    print("Enter 'q' at any time to quit.")
     print()
+
+    # If SmartArm goes first, play its first move
+    if isinstance(game.current_player_obj(), SmartArm):
+        game.smart_place_piece()
 
     while True:
         try:
-            user_input = input("Enter the position: ")
+            if game.current_player_wins() or game.determine_draw():
+                choice = input("\nGame Over! Press Enter or 'r' to restart (clean board) or 'q' to quit: ").strip().lower()
+                if choice == 'q':
+                    break
+                else:
+                    game.reset()
+                    if isinstance(game.current_player_obj(), SmartArm):
+                        game.smart_place_piece()
+                    continue
+
+            user_input = input("Enter position (0-8): ")
             if user_input.lower() == 'q':
                 print("Quitting the game.")
                 break
             pos = int(user_input)
             game.place_piece(pos)
-            game.smart_place_piece()
+            if not game.current_player_wins() and not game.determine_draw():
+                game.smart_place_piece()
         except ValueError:
             print("Invalid input. Please enter a number between 0 and 8 or 'q' to quit.")
         except Exception as e:
             print(f"An error occurred: {e}")
             
-    # game.reset()
-    #p2.arm.set_and_wait_goal_pos([2048, 1600, 1070, 2200, 2048, 2048])
-    p2.arm.set_and_wait_goal_pos([2048, 1800, 1850, 1100, 2048, 2048])
-    p2.arm._disable_torque()
+    if hasattr(arm_player, 'arm'):
+        arm_player.arm.set_and_wait_goal_pos([2048, 1800, 1850, 1100, 2048, 2048])
+        arm_player.arm._disable_torque()
