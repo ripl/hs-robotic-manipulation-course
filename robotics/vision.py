@@ -175,12 +175,16 @@ class BoardVision:
 
     def update_board_cam(self, x, y, w, h):
         """
-        No changes needed!
+        Smooths board position across frames using exponential moving average (low-pass filter).
         """
-        self.x = x
-        self.y = y
-        self.w = w
-        self.h = h
+        if self.x is None:
+            self.x, self.y, self.w, self.h = x, y, w, h
+        else:
+            alpha = 0.25  # Smooth out frame-to-frame jitter
+            self.x = self.x * (1 - alpha) + x * alpha
+            self.y = self.y * (1 - alpha) + y * alpha
+            self.w = self.w * (1 - alpha) + w * alpha
+            self.h = self.h * (1 - alpha) + h * alpha
     
     
     def cap_board_state(self):
@@ -227,29 +231,51 @@ class BoardVision:
             green_mask = cv2.inRange(hsv, lower_green, upper_green)
 
             contours_green, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            for cnt in contours_green:
-                area = cv2.contourArea(cnt)
-                if area > 500:
-                    x, y, w, h = cv2.boundingRect(cnt)
-                    cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                    self.update_board_cam(x,y,w,h)
+            valid_green = [cnt for cnt in contours_green if cv2.contourArea(cnt) > 100]
+            if valid_green:
+                all_pts = np.vstack(valid_green)
+                x_min = float(np.min(all_pts[:, 0, 0]))
+                x_max = float(np.max(all_pts[:, 0, 0]))
+                y_min = float(np.min(all_pts[:, 0, 1]))
+                y_max = float(np.max(all_pts[:, 0, 1]))
+
+                w = x_max - x_min
+                # Ensure y_max is at least y_min + w so pieces on bottom row don't block green and pull y_max upward
+                y_max = max(y_max, y_min + w)
+                h = max(y_max - y_min, w)
+                w = h  # Force square geometry
+
+                x = x_min
+                y = y_min
+
+                if w > 50 and h > 50:
+                    cv2.rectangle(frame, (int(x), int(y)), (int(x + w), int(y + h)), (0, 255, 0), 2)
+                    self.update_board_cam(x, y, w, h)
                     board_seen = True
-            if board_seen:
+
+            if board_seen and self.x is not None and self.w is not None and self.h is not None:
+                def is_inside_board(px, py, pw, ph):
+                    cx = px + pw / 2.0
+                    cy = py + ph / 2.0
+                    return (self.x <= cx <= self.x + self.w) and (self.y <= cy <= self.y + self.h)
+
                 contours_red, _ = cv2.findContours(red_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 for cnt in contours_red:
                     area = cv2.contourArea(cnt)
-                    if area > 500:
+                    if area > 800:
                         x, y, w, h = cv2.boundingRect(cnt)
-                        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
-                        self.process_detected_piece(x,y,w,h,True)
+                        if is_inside_board(x, y, w, h):
+                            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
+                            self.process_detected_piece(x, y, w, h, True)
 
                 contours_blue, _ = cv2.findContours(blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 for cnt in contours_blue:
                     area = cv2.contourArea(cnt)
-                    if area > 500:
+                    if area > 800:
                         x, y, w, h = cv2.boundingRect(cnt)
-                        cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
-                        self.process_detected_piece(x,y,w,h,False)
+                        if is_inside_board(x, y, w, h):
+                            cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+                            self.process_detected_piece(x, y, w, h, False)
                 for n in range(len(self.board_window)):
                     self.board_window[n] = self.board_window[n]*0.9
             if self.main:
@@ -262,7 +288,7 @@ class BoardVision:
 
 if __name__ == "__main__":
     main=True
-    board = BoardVision(True, 0) #<- change the number around until you connect to the usb camera
+    board = BoardVision(True, 4) #<- change the number around until you connect to the usb camera
 
     if not main:
         while True:
