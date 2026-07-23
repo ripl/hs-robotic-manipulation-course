@@ -1,5 +1,6 @@
 import random, os, sys
-from robotics.robot.robot import Robot
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from robot.robot import Robot
 from players import Player, Arm, SmartArm
 
 class TicTacToe:

@@ -1,7 +1,7 @@
 import pygame
 from game import TicTacToe
 from players import Player, Arm, SmartArm
-from robotics.robot.robot import Robot
+from robot.robot import Robot
 import sys
 
 class TicTacToeUI:

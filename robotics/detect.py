@@ -1,3 +1,5 @@
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 import cv2
 import numpy as np
 import json
@@ -8,11 +10,12 @@ from robot.robot import Robot
 # sudo apt-get install libcanberra-gtk-module libcanberra-gtk3-module
 # pip install opencv-python
 # Load robot settings
-with open('config.json') as f:
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+with open(os.path.join(BASE_DIR, 'config.json')) as f:
     config = json.load(f)
     arm_config = config['arm']
 # Load game positions
-with open('actions.json') as f:
+with open(os.path.join(BASE_DIR, 'actions.json')) as f:
     positions = json.load(f)
 # Dynamixel configuration
 arm = Robot(device_name=arm_config['device_name'],

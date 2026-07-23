@@ -1,8 +1,10 @@
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import pygame
 from game import TicTacToe
 from players import Player, Arm, SmartArm
-import sys
-from robotics.vision import BoardVision
+from vision import BoardVision
 import time
 
 class TicTacToeUI:
@@ -157,8 +159,9 @@ class TicTacToeUI:
         """
         Update the board of the GUI.
         """
-        X_IMAGE = pygame.transform.scale(pygame.image.load("images/x.png"), (100, 100))
-        O_IMAGE = pygame.transform.scale(pygame.image.load("images/o.png"), (100, 100))
+        img_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
+        X_IMAGE = pygame.transform.scale(pygame.image.load(os.path.join(img_dir, "x.png")), (100, 100))
+        O_IMAGE = pygame.transform.scale(pygame.image.load(os.path.join(img_dir, "o.png")), (100, 100))
 
         for i in range(3):
             for j in range(3):
@@ -250,6 +253,7 @@ class TicTacToeUI:
 
             print("here")
             self.smart_update()
+            time.sleep(0.3)
             # self.screen.fill(self.light_grey)
             # Draw all the boards
             self.draw_boards()

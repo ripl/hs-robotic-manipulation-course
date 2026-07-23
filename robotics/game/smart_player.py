@@ -1,6 +1,8 @@
 import json
 import random
-from robotics.robot.robot import Robot
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from robot.robot import Robot
 from players import Player
 
 
