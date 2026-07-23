@@ -20,7 +20,7 @@
             <joint axis="0 1 0"/>
             <default class="joint1">
                 <joint axis="0 0 1" range="-3.14158 3.14158" damping="0.5"/>
-                <position ctrlrange="-3.14158 3.14158" kp="50"/>
+                <position ctrlrange="-3.14158 3.14158" kp="350"/>
             </default>
             <default class="joint2">
                 <joint axis="1 0 0" range="-3.14158 3.14158" damping="0.5"/>
