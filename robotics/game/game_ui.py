@@ -31,6 +31,7 @@ class TicTacToeUI:
         self.blk = (0, 0, 0)
         self.white = (255, 255, 255)
         self.light_grey = (211, 211, 211)
+        self.green = (92, 202, 80)
         self.dark_blue = (0, 0, 209)
         self.dark_grey = (169, 169, 169)
         
@@ -123,7 +124,7 @@ class TicTacToeUI:
     def draw_boards(self):
         # Draw the board of rectangles and labels
         for index, rect in enumerate(self.board):
-            pygame.draw.rect(self.screen, self.blk, rect, self.border_width)
+            pygame.draw.rect(self.screen, self.green, rect, self.border_width)
             label = self.font_small.render(str(index), True, self.blk)
             self.screen.blit(label, (rect.x + 5, rect.y + 5))  # Slightly offset from top left corner
         
