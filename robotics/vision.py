@@ -17,7 +17,7 @@ class BoardVision:
         self.h = None
         self.board_window = [0]*9
         self.board_state = [None]*9
-        self.old_board_state = None
+        self.old_board_state = [None]*9
         self.true_board_state = self.board_state.copy()
         self.confidence = 0
         self.confidence_threshold = 100
@@ -28,6 +28,16 @@ class BoardVision:
         self.camera_thread = threading.Thread(target=self.cap_board_state)
         self.camera_thread.daemon = True
         self.camera_thread.start()
+
+    def reset_vision(self):
+        """
+        Resets the internal vision board state baseline to empty.
+        """
+        self.board_window = [0]*9
+        self.board_state = [None]*9
+        self.old_board_state = [None]*9
+        self.true_board_state = [None]*9
+        self.confidence = self.confidence_threshold
 
 
 
@@ -110,6 +120,8 @@ class BoardVision:
                 print("Board state:")
                 for row in range(3):
                     print(" | ".join(" " if x is None else x for x in self.true_board_state[row*3:(row+1)*3]))
+                    if row < 2:
+                        print("-" * 9)
 
     def get_piece_change(self):
         """
@@ -278,6 +290,7 @@ class BoardVision:
                             self.process_detected_piece(x, y, w, h, False)
                 for n in range(len(self.board_window)):
                     self.board_window[n] = self.board_window[n]*0.9
+                self.update_board_state()
             if self.main:
                 cv2.imshow("Camera View", frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):

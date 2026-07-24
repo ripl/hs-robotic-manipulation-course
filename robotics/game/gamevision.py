@@ -14,13 +14,17 @@ def load_piece_image(primary_name, fallback_name, scale_size):
     return pygame.transform.scale(pygame.image.load(path), scale_size)
 
 class TicTacToeUI:
-    def __init__(self, game=None, size=1500):
+    def __init__(self, game=None, size=750):
         # General setup
         pygame.init()
         self.clock = pygame.time.Clock()
+        self.size = size
+        self.half_size = size // 2
+        self.third_size = size // 3
+        self.sixth_size = size // 6
         
         # Setting up the main window
-        self.WIDTH, self.HEIGHT = size - 250, size
+        self.WIDTH, self.HEIGHT = size - self.sixth_size, size
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         pygame.display.set_caption("TTIC Interface")
         
@@ -33,9 +37,9 @@ class TicTacToeUI:
         
         # Font setup
         pygame.font.init()
-        self.font_pieces = pygame.font.SysFont(None, int(60 * self.HEIGHT / 600))
-        self.font_large = pygame.font.SysFont(None, int(30 * self.HEIGHT / 600))
-        self.font_small = pygame.font.SysFont(None, int(24 * self.HEIGHT / 600))
+        self.font_pieces = pygame.font.SysFont(None, int(self.HEIGHT // 10))
+        self.font_large = pygame.font.SysFont(None, int(self.HEIGHT // 20))
+        self.font_small = pygame.font.SysFont(None, int(self.HEIGHT // 25))
         
         # Initialize boards
         self.init_boards()
@@ -165,8 +169,8 @@ class TicTacToeUI:
         """
         Update the board of the GUI.
         """
-        X_IMAGE = load_piece_image("x_piece.png", "x.png", (120, 120))
-        O_IMAGE = load_piece_image("o_piece.png", "o.png", (120, 120))
+        X_IMAGE = load_piece_image("x_piece.png", "x.png", (self.size // 10, self.size // 10))
+        O_IMAGE = load_piece_image("o_piece.png", "o.png", (self.size // 10, self.size // 10))
 
         # Draw main 3x3 board pieces centered in each cell
         for index in range(9):
@@ -178,8 +182,9 @@ class TicTacToeUI:
                 self.screen.blit(img, img_rect)
         
         # Status Card (top-left quadrant)
-        card_rect = pygame.Rect(0, 0, 660, 270)
-        card_rect.center = (375, 375)
+        card_w, card_h = int(self.half_size * 0.94), int(self.half_size * 0.60)
+        card_rect = pygame.Rect(0, 0, card_w, card_h)
+        card_rect.center = (self.half_size // 2, self.half_size // 2)
 
         winner = self.game.get_winner()
         is_draw = self.game.determine_draw()
@@ -211,23 +216,25 @@ class TicTacToeUI:
             badge_img = X_IMAGE if curr_turn_piece == 'x' else O_IMAGE
 
         # Draw card background & border
-        pygame.draw.rect(self.screen, self.white, card_rect, border_radius=20)
-        pygame.draw.rect(self.screen, border_color, card_rect, 4, border_radius=20)
+        b_radius = max(8, int(card_h * 0.10))
+        pygame.draw.rect(self.screen, self.white, card_rect, border_radius=b_radius)
+        pygame.draw.rect(self.screen, border_color, card_rect, 3, border_radius=b_radius)
 
         # Draw Title
         lbl_title = self.font_small.render(status_title, True, (120, 120, 120))
-        self.screen.blit(lbl_title, lbl_title.get_rect(center=(card_rect.centerx, card_rect.top + 45)))
+        self.screen.blit(lbl_title, lbl_title.get_rect(center=(card_rect.centerx, card_rect.top + int(card_h * 0.22))))
 
         # Draw Status Description & Badge Icon
         lbl_desc = self.font_large.render(status_desc, True, text_color)
         if badge_img:
-            icon_scaled = pygame.transform.scale(badge_img, (55, 55))
-            total_w = lbl_desc.get_width() + 65
+            icon_dim = int(card_h * 0.28)
+            icon_scaled = pygame.transform.scale(badge_img, (icon_dim, icon_dim))
+            total_w = lbl_desc.get_width() + icon_dim + 10
             start_x = card_rect.centerx - (total_w // 2)
-            self.screen.blit(icon_scaled, (start_x, card_rect.top + 135))
-            self.screen.blit(lbl_desc, (start_x + 65, card_rect.top + 145))
+            self.screen.blit(icon_scaled, (start_x, card_rect.top + int(card_h * 0.55)))
+            self.screen.blit(lbl_desc, (start_x + icon_dim + 10, card_rect.top + int(card_h * 0.58)))
         else:
-            self.screen.blit(lbl_desc, lbl_desc.get_rect(center=(card_rect.centerx, card_rect.top + 160)))
+            self.screen.blit(lbl_desc, lbl_desc.get_rect(center=(card_rect.centerx, card_rect.top + int(card_h * 0.60))))
             
         # Available pieces centered in cells A-F
         arm = self.arm_player
@@ -362,6 +369,7 @@ class TicTacToeUI:
                         self.quit_game()
 
         pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+        Player.player_count = 0
         if arm_starts:
             p1 = SmartArm('x', lvl=lvl)
             p2 = Player('o')
@@ -436,7 +444,15 @@ class TicTacToeUI:
                     if btn_restart.collidepoint(event.pos):
                         pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
                         print("Resetting board and cleaning pieces...")
-                        self.game.reset()
+                        if self.game is not None:
+                            self.game.reset()
+                        self.show_setup_menu()
+                        if 'vision' in globals() and globals()['vision'] is not None:
+                            globals()['vision'].reset_vision()
+                        self.screen.fill(self.light_grey)
+                        self.draw_boards()
+                        self.draw_current_board()
+                        pygame.display.flip()
                         if isinstance(self.game.current_player_obj(), SmartArm):
                             self.smart_update()
                             time.sleep(0.3)
@@ -447,7 +463,15 @@ class TicTacToeUI:
                     if event.key in (pygame.K_r, pygame.K_RETURN, pygame.K_KP_ENTER):
                         pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
                         print("Resetting board and cleaning pieces...")
-                        self.game.reset()
+                        if self.game is not None:
+                            self.game.reset()
+                        self.show_setup_menu()
+                        if 'vision' in globals() and globals()['vision'] is not None:
+                            globals()['vision'].reset_vision()
+                        self.screen.fill(self.light_grey)
+                        self.draw_boards()
+                        self.draw_current_board()
+                        pygame.display.flip()
                         if isinstance(self.game.current_player_obj(), SmartArm):
                             self.smart_update()
                             time.sleep(0.3)
@@ -531,8 +555,13 @@ class TicTacToeUI:
             self.clock.tick(60) # Frames per second
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="TicTacToe BoardVision UI")
+    parser.add_argument("--size", type=int, default=750, help="Window size height (default: 750)")
+    args = parser.parse_args()
+
     vision = BoardVision(False, 4)
-    ui = TicTacToeUI()
+    ui = TicTacToeUI(size=args.size)
     ui.run()
     if hasattr(ui.arm_player, 'arm'):
         ui.arm_player.arm._disable_torque()

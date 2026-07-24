@@ -377,6 +377,7 @@ class TicTacToeUI:
                         self.quit_game()
 
         pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+        Player.player_count = 0
         if arm_starts:
             p1 = SmartArm('x', lvl=lvl)
             p2 = Player('o')
@@ -447,7 +448,13 @@ class TicTacToeUI:
                     if btn_restart.collidepoint(event.pos):
                         pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
                         print("Resetting board and cleaning pieces...")
-                        self.game.reset()
+                        if self.game is not None:
+                            self.game.reset()
+                        self.show_setup_menu()
+                        self.screen.fill(self.light_grey)
+                        self.draw_boards()
+                        self.draw_current_board()
+                        pygame.display.flip()
                         if isinstance(self.game.current_player_obj(), SmartArm):
                             self.smart_update()
                             time.sleep(0.3)
@@ -458,7 +465,13 @@ class TicTacToeUI:
                     if event.key in (pygame.K_r, pygame.K_RETURN, pygame.K_KP_ENTER):
                         pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
                         print("Resetting board and cleaning pieces...")
-                        self.game.reset()
+                        if self.game is not None:
+                            self.game.reset()
+                        self.show_setup_menu()
+                        self.screen.fill(self.light_grey)
+                        self.draw_boards()
+                        self.draw_current_board()
+                        pygame.display.flip()
                         if isinstance(self.game.current_player_obj(), SmartArm):
                             self.smart_update()
                             time.sleep(0.3)
@@ -509,7 +522,12 @@ class TicTacToeUI:
             self.clock.tick(60) # Frames per second
 
 if __name__ == "__main__":
-    ui = TicTacToeUI()
+    import argparse
+    parser = argparse.ArgumentParser(description="TicTacToe Game UI")
+    parser.add_argument("--size", type=int, default=750, help="Window size height (default: 750)")
+    args = parser.parse_args()
+
+    ui = TicTacToeUI(size=args.size)
     ui.run()
     if hasattr(ui.arm_player, 'arm'):
         ui.arm_player.arm._disable_torque()

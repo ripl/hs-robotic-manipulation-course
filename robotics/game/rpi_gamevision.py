@@ -370,6 +370,7 @@ class TicTacToeUI:
                         self.quit_game()
 
         pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+        Player.player_count = 0
         if arm_starts:
             p1 = SmartArm('x', lvl=lvl)
             p2 = Player('o')
@@ -440,7 +441,16 @@ class TicTacToeUI:
                     if btn_restart.collidepoint(event.pos):
                         pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
                         print("Resetting board and cleaning pieces...")
-                        self.game.reset()
+                        if self.game is not None:
+                            self.game.reset()
+                        self.show_setup_menu()
+                        if 'vision' in globals() and globals()['vision'] is not None:
+                            globals()['vision'].reset_vision()
+                        self.screen.fill(self.light_grey)
+                        self.draw_boards()
+                        self.draw_current_board()
+                        self.draw_banner()
+                        pygame.display.flip()
                         if isinstance(self.game.current_player_obj(), SmartArm):
                             self.smart_update()
                             time.sleep(0.3)
@@ -451,7 +461,16 @@ class TicTacToeUI:
                     if event.key in (pygame.K_r, pygame.K_RETURN, pygame.K_KP_ENTER):
                         pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
                         print("Resetting board and cleaning pieces...")
-                        self.game.reset()
+                        if self.game is not None:
+                            self.game.reset()
+                        self.show_setup_menu()
+                        if 'vision' in globals() and globals()['vision'] is not None:
+                            globals()['vision'].reset_vision()
+                        self.screen.fill(self.light_grey)
+                        self.draw_boards()
+                        self.draw_current_board()
+                        self.draw_banner()
+                        pygame.display.flip()
                         if isinstance(self.game.current_player_obj(), SmartArm):
                             self.smart_update()
                             time.sleep(0.3)
@@ -539,8 +558,13 @@ class TicTacToeUI:
             self.clock.tick(60)
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="RPi TicTacToe BoardVision UI")
+    parser.add_argument("--size", type=int, default=750, help="Window size height (default: 750)")
+    args = parser.parse_args()
+
     vision = BoardVision(False, 4)
-    ui = TicTacToeUI()
+    ui = TicTacToeUI(size=args.size)
     ui.run()
     if hasattr(ui.arm_player, 'arm'):
         ui.arm_player.arm._disable_torque()
