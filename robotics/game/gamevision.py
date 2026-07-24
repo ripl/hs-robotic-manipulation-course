@@ -32,6 +32,7 @@ class TicTacToeUI:
         self.blk = (0, 0, 0)
         self.white = (255, 255, 255)
         self.light_grey = (211, 211, 211)
+        self.green = (92, 202, 80)
         self.dark_blue = (0, 0, 209)
         self.dark_grey = (169, 169, 169)
         
@@ -124,7 +125,7 @@ class TicTacToeUI:
     def draw_boards(self):
         # Draw the board of rectangles and labels
         for index, rect in enumerate(self.board):
-            pygame.draw.rect(self.screen, self.blk, rect, self.border_width)
+            pygame.draw.rect(self.screen, self.green, rect, self.border_width)
             label = self.font_small.render(str(index), True, self.blk)
             self.screen.blit(label, (rect.x + 5, rect.y + 5))  # Slightly offset from top left corner
         
@@ -558,9 +559,10 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="TicTacToe BoardVision UI")
     parser.add_argument("--size", type=int, default=750, help="Window size height (default: 750)")
+    parser.add_argument("--cam", type=int, default=4, help="Camera index (default: 4)")
     args = parser.parse_args()
 
-    vision = BoardVision(False, 4)
+    vision = BoardVision(False, args.cam)
     ui = TicTacToeUI(size=args.size)
     ui.run()
     if hasattr(ui.arm_player, 'arm'):
