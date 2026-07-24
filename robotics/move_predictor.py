@@ -6,8 +6,6 @@ import time
 
 GRAB_SPOT = [1080, 195, 30000]
 
-#contours = board.last_predictions_clean
-
 def clamp(val, min, max):
     if val < min:
         val = min
@@ -44,7 +42,6 @@ def imagine_pos(current_pos, desired_pos, deltas):
     print("----------------")
     print()
 
-
     return best_move
 
 with open("deltas.json") as f:
@@ -57,9 +54,6 @@ with open("deltas.json") as f:
 
         time.sleep(1.0)
 
-        #print(current_pos)
         if all(x != -1 for x in current_pos):
-            #print(current_pos)
-
             if len(current_pos) > 0:
                 best_move = imagine_pos(current_pos, GRAB_SPOT.copy(), deltas)

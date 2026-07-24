@@ -97,9 +97,9 @@ class Joint(pg.sprite.Sprite):
 
 
 class Helicopter(pg.sprite.Sprite):
-    def __init__(self, pos, claw):
+    def __init__(self, pos, claw, image="./sprites/helicopter.png"):
         super().__init__()
-        self.image = pg.image.load("sprites/helicopter.png").convert_alpha()
+        self.image = pg.image.load(image).convert_alpha()
         self.image = pg.transform.scale_by(self.image, 3.0)
         self.orig_image = self.image
         self.angle = -10
@@ -193,31 +193,31 @@ class Helicopter(pg.sprite.Sprite):
 
 def main(winstyle=0):
     file_path = Path(__file__).resolve()
-    robotics = Path(__file__).resolve().parents[1] / "robotics" / "config.json"
+    robotics = file_path.parents[1] / "robotics"
+    sprites_path = file_path.parent / "sprites"
 
     screen = pg.display.set_mode((640, 480))
     clock = pg.time.Clock()
-    shoulder = Joint(image="sprites/shoulder.png", pos=(134, 440))
-    forearm = Joint(image="sprites/forearm.png", pivot=(64, 0), length=128)
-    wrist = Joint(image="sprites/wrist.png", pivot=(28, 2), length=100)
-    static_gripper = Joint(image="sprites/static_gripper.png", pivot=(0, 16), length=0)
-    dynamic_gripper = Joint(image="sprites/dynamic_gripper.png", pivot=(-20, 30))
+    shoulder = Joint(image=str(sprites_path / "shoulder.png"), pos=(134, 440))
+    forearm = Joint(image=str(sprites_path / "forearm.png"), pivot=(64, 0), length=128)
+    wrist = Joint(image=str(sprites_path / "wrist.png"), pivot=(28, 2), length=100)
+    static_gripper = Joint(image=str(sprites_path / "static_gripper.png"), pivot=(0, 16), length=0)
+    dynamic_gripper = Joint(image=str(sprites_path / "dynamic_gripper.png"), pivot=(-20, 30))
 
-    helicopter = Helicopter(Vector2(800, 160), claw=dynamic_gripper)
+    helicopter = Helicopter(Vector2(800, 160), claw=dynamic_gripper, image=str(sprites_path / "helicopter.png"))
 
     joints = [shoulder, forearm, wrist, static_gripper]
     servos = [2, 3, 4, 6]
-    #servos = [8, 9, 10, 12]
     signs = [0.5, -0.5, -0.5, 1.0]
     offsets = [90, 185, 180, 0]
 
     all_sprites = pg.sprite.Group(joints, dynamic_gripper, dynamic_gripper, helicopter)
     helicopters = pg.sprite.Group(helicopter)
 
-    bg_original = pg.image.load("sprites/background.png").convert()
+    bg_original = pg.image.load(str(sprites_path / "background.png")).convert()
     background = pg.transform.scale(bg_original, (640, 480))
 
-    arm = PygameArm(leader=False, claw=6)
+    arm = PygameArm(leader=False, claw=6, config_path = str(robotics / "config.json"))
 
     # --- Gripper velocity tracking, used to compute throw speed on release ---
     gripper_positions = deque(maxlen=GRIPPER_HISTORY_LEN)
