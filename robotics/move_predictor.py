@@ -4,11 +4,6 @@ from vision import BoardVision
 from track_piece import track_piece_ml
 import time
 
-board = BoardVision(
-    main = False,
-    cam = 0
-)
-
 GRAB_SPOT = [1080, 195, 30000]
 
 #contours = board.last_predictions_clean
@@ -67,5 +62,4 @@ with open("deltas.json") as f:
             #print(current_pos)
 
             if len(current_pos) > 0:
-                best_move = imagine_pos(current_pos, GRAB_SPOT, deltas)
-                #print(f"He wants to do {best_move}")
+                best_move = imagine_pos(current_pos, GRAB_SPOT.copy(), deltas)

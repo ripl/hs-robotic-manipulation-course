@@ -93,6 +93,26 @@ class Robot:
                 position -= 2 ** 32
             positions.append(position)
         return np.array(positions)
+
+    def read_position_dict(self, tries=2):
+            """
+            Reads the joint positions of the robot. 2048 is the center position. 0 and 4096 are 180 degrees in each direction.
+            :param tries: maximum number of tries to read the position
+            :return: list of joint positions in range [0, 4096]
+            """
+            result = self.position_reader.txRxPacket()
+            if result != 0:
+                if tries > 0:
+                    return self.read_position(tries=tries - 1)
+                else:
+                    print(f'failed to read position!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            positions = {}
+            for id in self.servo_ids:
+                position = self.position_reader.getData(id, ReadAttribute.POSITION.value, 4)
+                if position > 2 ** 31:
+                    position -= 2 ** 32
+                positions[id] = position
+            return positions
     
     def read_velocity(self):
         """
