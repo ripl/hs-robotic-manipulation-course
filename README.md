@@ -70,9 +70,9 @@ Change the options to scan only IDs 0 to 15 with Protocol 2.0, the USB port wher
 
 Scan with only one arm at a time.
 
-For the follower arm: Set the IDs from 1 to 6, with 1 being the motor closest to the base and 6 being the final motor for the claw.
+For the follower arm: Set the IDs from 1 to 6, with 1 being the motor closest to the base and 6 being the final motor for the claw. Set each motor's baudrate to 1,000,000.
 
-For the leader arm: Set the IDs from 7 to 12, with 7 being the motor closest to the base and 12 being the final motor for the claw.
+For the leader arm: Set the IDs from 7 to 12, with 7 being the motor closest to the base and 12 being the final motor for the claw. Set each motor's baudrate to 1,000,000.
 
 Once you have set up the motor IDs, be sure to close the Dynamixel Wizard, as none of the following Python programs will work while it is open.
 
