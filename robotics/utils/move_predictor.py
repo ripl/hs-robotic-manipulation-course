@@ -1,7 +1,9 @@
-import os, json, threading, argparse
+import sys, os, json
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import numpy as np
 from vision import BoardVision
-from track_piece import track_piece_ml
+from pathlib import Path
 import time
 
 GRAB_SPOT = [1080, 195, 30000]
@@ -44,8 +46,16 @@ def imagine_pos(current_pos, desired_pos, deltas):
 
     return best_move
 
-with open("deltas.json") as f:
-    board = BoardVision(main=False, cam=0, use_yolo=True)
+
+file_path = Path(__file__).resolve()
+utils = file_path.parent
+robotics = file_path.parents[1]
+
+with open(utils / "deltas.json") as f:
+    board = BoardVision(main=False, cam=0, use_yolo=True,
+        weights_path=str(robotics / "handle_model.pt"))
+
+    print(board)
 
     deltas = json.load(f)
 

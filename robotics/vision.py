@@ -103,6 +103,21 @@ class BoardVision:
         x = -1
         y = -1
         area = -1
+
+        max_conf = 0
+
+        for x1, y1, x2, y2, label, conf in self.last_predictions_clean:
+            box_area = (x2 - x1) * (y2 - y1)
+
+            if conf > max_conf and box_area > 13000:
+                max_conf = conf
+
+                x = (x1 + x2) // 2
+                y = (y1 + y2) // 2
+                area = box_area
+        
+        return (x, y, area)
+
     def reset_vision(self):
         """
         Resets the internal vision board state baseline to empty.
