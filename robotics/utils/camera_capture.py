@@ -73,7 +73,7 @@ class BoardVision:
         self.h = h
 
     def take_screenshot(self, frame):
-        filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"captures/data-{self.screenshot_count}.jpg")
+        filename = f"captures/data-{self.screenshot_count}.jpg"
         cv2.imwrite(filename, frame)
         print(f"Saved {filename}")
         self.screenshot_count += 1
@@ -110,6 +110,7 @@ class BoardVision:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="TicTacToe BoardVision camera capture")
     parser.add_argument("-t", action="store_true", help="Automatically take a screenshot every 0.5 seconds instead of capturing on keypress")
+    parser.add_argument("--cam", type=int, default=4, help="Camera index (default: 4)")
     args = parser.parse_args()
 
-    board = BoardVision(True, 4, use_timer=args.t) #<- change the number around until you connect to the usb camera
+    board = BoardVision(True, cam=args.cam, use_timer=args.t) #<- change the number around until you connect to the usb camera

@@ -397,6 +397,7 @@ class TicTacToeUI:
             arm_obj = getattr(self, 'arm_player', None)
             if arm_obj and hasattr(arm_obj, 'arm'):
                 try:
+                    arm_obj.arm.set_and_wait_goal_pos(arm_obj.arm_config['rest_pos'])
                     print("Disabling arm torque...")
                     arm_obj.arm._disable_torque()
                 except Exception as e:

@@ -2,6 +2,7 @@ import random, os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from robot.robot import Robot
 from players import Player, Arm, SmartArm
+import time
 
 class TicTacToe:
     """
@@ -412,7 +413,9 @@ if __name__ == '__main__':
             print("Invalid input. Please enter a number between 0 and 8 or 'q' to quit.")
         except Exception as e:
             print(f"An error occurred: {e}")
-            
+
+    print(arm_player)
+    print(hasattr(arm_player, 'arm'))
     if hasattr(arm_player, 'arm'):
-        arm_player.arm.set_and_wait_goal_pos([2048, 1800, 1850, 1100, 2048, 2048])
+        arm_player.arm.set_and_wait_goal_pos(arm_player.arm_config['rest_pos'])
         arm_player.arm._disable_torque()
