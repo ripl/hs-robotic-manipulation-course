@@ -11,7 +11,7 @@ CENT_Y = 300
 LOWER_BLUE = np.array([80, 100, 80])
 UPPER_BLUE = np.array([120, 255, 255])
 
-AREA_THRESH = 10
+AREA_THRESH = 12000
 CONF_THRESH = 0.4
 
 def track_piece_ml(countours):
@@ -19,6 +19,7 @@ def track_piece_ml(countours):
     closest_dist = np.array([10000000, 10000000])
     closest_norm = 10000000
     closest_pos = np.array([0,0])
+    closest_area = 0
 
     # Check for most central handle with confidence above 0.5
     for x1, y1, x2, y2, label, conf in countours:
@@ -39,6 +40,7 @@ def track_piece_ml(countours):
                 closest_pos = cont_pos
                 closest_dist = dist
                 closest_norm = norm
+                closest_area = area
 
     movements = {}
 
@@ -50,8 +52,10 @@ def track_piece_ml(countours):
 
     if closest_norm < 1000:
         if closest_pos[0] < 840 or closest_pos[0] > 1200:
-            movements[1] = closest_dist[0] / 100
+            movements[1] = -closest_dist[0] / 50
         if closest_pos[1] > 250 or closest_pos[1] < 140:
             movements[4] = closest_dist[1] / 50
+        if closest_area < 15000:
+            movements[3] = -30
 
     return movements

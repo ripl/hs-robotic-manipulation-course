@@ -1,6 +1,8 @@
 import json
+import time
 import random
 from robotics.robot.robot import Robot
+from track_piece import track_piece_ml
 
 class Player:
     """
@@ -54,7 +56,8 @@ class Arm(Player):
     >>> p2
     ArmPlayer 2 is "o"
     """
-    def __init__(self, piece, config_path='../config.json', positions_path='../actions.json'):
+    def __init__(self, piece, config_path='../config.json', positions_path='../actions.json',
+                    vision=None):
         """
         Create an Arm instance, inherit from the Player class.
 
@@ -90,6 +93,8 @@ class Arm(Player):
 
         self.used_pieces = []
 
+        self.vision = vision
+
     def __repr__(self):
         return f'ArmPlayer {self.count} is "{self.piece}"'
     
@@ -103,6 +108,10 @@ class Arm(Player):
         :param start: The start position on the physical board.
         :param end: The end position on the physical board.
         """
+        if self.vision is not None:
+            self.move_piece_precise(start, end)
+            return
+
         valid_poses = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
 
         for pose in valid_poses:
@@ -112,6 +121,60 @@ class Arm(Player):
             self.arm.set_and_wait_goal_pos(self.positions[end][pose])
 
         self.arm.set_and_wait_goal_pos(self.arm_config["home_pos"])
+
+    def adjust_loop(self):
+        for i in range(20):
+            # Return if vision is disconnected
+            if self.vision == None:
+                return
+
+            # Pass predictions to track_piece
+            contours = self.vision.last_predictions_clean
+            moves = track_piece_ml(contours)
+            if len(moves) == 0:
+                return
+
+            # Act out movements one by one
+            for servo_id, delta in moves.items():
+                self.move_servo(servo_id, delta)
+
+    def move_servo(self, servo_id, delta):
+        pos = self.arm.read_position()
+        pos[servo_id] += delta
+        self.arm.set_and_wait_goal_pos(pos)
+
+    def close_claw(self):
+        pos = self.arm.read_position()
+        pos[5] = 2100
+        self.arm.set_and_wait_goal_pos(pos)
+
+    def move_piece_precise(self, start, end):
+            """
+            Move a piece from start to end position on the physical board.
+
+            During the pre-grasp pose, the arm will adjust itself to better pick
+            up the piece.
+    
+            :param start: The start position on the physical board.
+            :param end: The end position on the physical board.
+            """
+            if self.vision is None:
+                self.move_piece(start, end)
+                return
+
+            valid_poses = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
+    
+            self.arm.set_and_wait_goal_pos(self.positions[start]['hover'])
+            self.arm.set_and_wait_goal_pos(self.positions[start]['pre-grasp'])
+            self.adjust_loop()
+            time.sleep(2.0)
+            self.close_claw()
+            self.arm.set_and_wait_goal_pos(self.positions[start]['post-grasp'])
+    
+            for pose in reversed(valid_poses):
+                self.arm.set_and_wait_goal_pos(self.positions[end][pose])
+    
+            self.arm.set_and_wait_goal_pos(self.arm_config["home_pos"])
 
     def clean_board(self, curr_board):
         """
@@ -138,14 +201,14 @@ class SmartArm(Arm):
     >>> p2
     SmartArmPlayer 2 is "o"
     """
-    def __init__(self, piece, lvl = 0):
+    def __init__(self, piece, lvl = 0, vision=None):
         """
         Create a Robotic Arm instance that can interact with the physical board autonomously.
         
         :param piece: The piece the robotic arm will play with.
         :param lvl: The level of autonomy or intelligence of the robotic arm. Default is 0.
         """
-        super().__init__(piece)
+        super().__init__(piece, vision=vision)
         
         if lvl == 0:
             self.play = self.novice

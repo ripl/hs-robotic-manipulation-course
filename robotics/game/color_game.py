@@ -14,7 +14,7 @@ class TicTacToeUI:
         self.size = size
         self.half_size=size//2
         self.third_size=size//3
-        self.sixth_size=size//6 
+        self.sixth_size=size//6
         # Setting up the main window
         self.WIDTH, self.HEIGHT = size - self.sixth_size, size
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
