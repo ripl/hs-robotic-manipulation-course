@@ -74,7 +74,7 @@ For the follower arm: Set the IDs from 1 to 6, with 1 being the motor closest to
 
 For the leader arm: Set the IDs from 7 to 12, with 7 being the motor closest to the base and 12 being the final motor for the claw. Set each motor's baudrate to 1 Mbps.
 
-Once you have set up the motor IDs, be sure to close the Dynamixel Wizard, as none of the following Python programs will work while it is open.
+Once you have set up the motor IDs, be sure to close the Dynamixel Wizard or hit the Disconnect button, as none of the following Python programs will work while it is open and connected to the arm.
 
 ## Controlling the robot
 
@@ -111,7 +111,7 @@ In the `robotics/` directory, there is a file named `record_positions.py`. This 
 
 If you are using the leader arm, you can open this program with `python robotics/record_positions.py -l`. Otherwise, you can run `python robotics/record_positions.py`.
 
-The program will prompt you to record four poses for each square, and existing positions can be skipped by typing “s”.
+The program will prompt you to record four poses for each square. Existing poses and squares can be skipped by typing “s”. The program will not overwrite your existing poses for a square until you have recorded all four positions, and will only overwrite poses that were not skipped.
 
 ### With `position_control.py`
 In the `robotics/` directory, there is a file named `position_control.py`. This program lets you record and overwrite positions for a specific action.
