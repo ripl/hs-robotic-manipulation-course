@@ -130,7 +130,10 @@ Another possibility is that the overloaded motor is tangled in wires. If it is, 
 ## Camera and Vision
 
 ### Using `vision.py`
-Use this file to determine which camera ID corresponds to the USB camera. On line 441 of `vision.py`, you can change the cam value of the BoardVision call until the program shows the USB cam output.
+Use this file to determine which camera ID corresponds to the USB camera.
+On the line of `vision.py` with the "#<- change the number around" comment, you
+can change the cam value of the BoardVision call until the program shows the USB
+cam output.
 
 ### Using `gamevision.py`
 This program lets you play tic-tac-toe against the robotic arm using the poses you defined in the previous steps.
