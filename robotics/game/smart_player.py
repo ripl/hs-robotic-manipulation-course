@@ -1,6 +1,8 @@
 import json
 import random
-from robotics.robot.robot import Robot
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from robot.robot import Robot
 from players import Player
 
 
@@ -29,6 +31,12 @@ class Arm(Player):
         super().__init__(piece)
 
         # Load robot settings
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        if not os.path.isabs(config_path):
+            config_path = os.path.abspath(os.path.join(base_dir, config_path))
+        if not os.path.isabs(positions_path):
+            positions_path = os.path.abspath(os.path.join(base_dir, positions_path))
+
         with open(config_path, 'r') as f:
             config = json.load(f)
             self.arm_config_1 = config['arm1']

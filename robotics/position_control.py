@@ -1,6 +1,8 @@
 import json
 import time
 import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 import threading
 import argparse
 import numpy as np
@@ -9,8 +11,9 @@ from robot.robot import Robot
 
 CONVERSION_FACTOR = 4096 / 360
 VALID_POSE_TYPES = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
-CONFIG_FILE = 'config.json'
-ACTIONS_FILE = 'actions.json'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(BASE_DIR, 'config.json')
+ACTIONS_FILE = os.path.join(BASE_DIR, 'actions.json')
 
 
 def parse_arguments():

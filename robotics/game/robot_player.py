@@ -1,13 +1,16 @@
-import json, time
+import json, time, sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from robot.robot import Robot
 
+base_dir = os.path.dirname(os.path.abspath(__file__))
+
 # Load robot settings
-with open('../config.json') as f:
+with open(os.path.abspath(os.path.join(base_dir, '../config.json'))) as f:
     config = json.load(f)
     arm_config = config['arm']
 
 # Load game positions
-with open('../actions.json') as f:
+with open(os.path.abspath(os.path.join(base_dir, '../actions.json'))) as f:
     positions = json.load(f)
 
 # Dynamixel configuration
