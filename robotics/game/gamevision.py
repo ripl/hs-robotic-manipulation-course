@@ -397,6 +397,7 @@ class TicTacToeUI:
             arm_obj = getattr(self, 'arm_player', None)
             if arm_obj and hasattr(arm_obj, 'arm'):
                 try:
+                    arm_obj.arm.set_and_wait_goal_pos(arm_obj.arm_config['rest_pos'])
                     print("Disabling arm torque...")
                     arm_obj.arm._disable_torque()
                 except Exception as e:
@@ -559,7 +560,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="TicTacToe BoardVision UI")
     parser.add_argument("--size", type=int, default=750, help="Window size height (default: 750)")
-    parser.add_argument("--cam", type=int, default=4, help="Camera index (default: 4)")
+    parser.add_argument("--cam", type=int, default=0, help="Camera index (default: 4)")
     args = parser.parse_args()
 
     vision = BoardVision(False, args.cam, use_yolo=False)
