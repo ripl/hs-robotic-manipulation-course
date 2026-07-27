@@ -209,7 +209,7 @@ class TicTacToe:
         else:
             return True 
     
-    def place_piece(self, pos):
+    def place_piece(self, pos, vision=None):
         """
         Handle updates to the state of the TicTacToe board.
         
@@ -221,7 +221,7 @@ class TicTacToe:
 
             current_player = self.current_player_obj()
             if isinstance(current_player, Arm):
-                self.arm_move(pos, current_player)            
+                self.arm_move(pos, current_player, vision)
 
             if not self.current_player_wins():
                 self.update()
@@ -332,7 +332,7 @@ class TicTacToe:
         """
         return self.p1 if self.curr_turn == self.p1.piece else self.p2
 
-    def arm_move(self, pos, current_player):
+    def arm_move(self, pos, current_player, vision=None):
         """
         Execute a move using the robotic arm if the current player is an Arm.
 
@@ -345,7 +345,10 @@ class TicTacToe:
         indx = random.randint(0, len(current_player.pieces) - 1)
         piece = current_player.pieces.pop(indx)
         current_player.used_pieces.append(piece)
-        current_player.move_piece(piece, str(pos))
+        if vision is not None:
+            current_player.move_piece_precise(piece, str(pos), vision)
+        else:
+            current_player.move_piece(piece, str(pos))
 
 if __name__ == '__main__':
 

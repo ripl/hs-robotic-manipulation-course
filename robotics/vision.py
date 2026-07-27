@@ -2,12 +2,13 @@ import cv2
 import numpy as np
 import threading
 import time
+from ultralytics import YOLO
 
 class BoardVision:
     """
     Automatically detects the TicTacToe board state using a camera!
     """
-    def __init__(self,main=False,cam=4):
+    def __init__(self,main=False,cam=0,use_yolo=False, weights_path="best.pt"):
         """
         No need to change anything!
         """
@@ -23,12 +24,85 @@ class BoardVision:
         self.confidence_threshold = 100
         self.main = main
         self.cap = cv2.VideoCapture(cam) #Tune this number until you get the USB camera!
+
+        # Load YOLO model
+        self.use_yolo = use_yolo
+
+        if use_yolo:
+            self.frame_count = 0
+            self.last_predictions = []
+            self.model = YOLO(weights_path)
+            self.infer_every_n = 3
+            self.last_predictions_clean = []
+
         if main:
             self.cap_board_state()
         self.camera_thread = threading.Thread(target=self.cap_board_state)
         self.camera_thread.daemon = True
         self.camera_thread.start()
 
+    def apply_nms(self, predictions, iou_threshold=0.5):
+        """
+        Applies Non-Maximum Suppression (NMS) to a list of bounding box predictions.
+        
+        Tuple format per item: (x1, y1, x2, y2, label, conf)
+        """
+        if not predictions:
+            return []
+
+        # 1. Sort predictions by confidence score in descending order
+        # Highest confidence boxes come first
+        sorted_preds = sorted(predictions, key=lambda item: item[5], reverse=True)
+        
+        keep_boxes = []
+
+        while sorted_preds:
+            # Pick the box with the highest confidence
+            current = sorted_preds.pop(0)
+            keep_boxes.append(current)
+            
+            c_x1, c_y1, c_x2, c_y2, c_label, c_conf = current
+            c_area = (c_x2 - c_x1) * (c_y2 - c_y1)
+            
+            filtered_preds = []
+            for next_box in sorted_preds:
+                n_x1, n_y1, n_x2, n_y2, n_label, n_conf = next_box
+
+                # Calculate coordinates of the intersection rectangle
+                inter_x1 = max(c_x1, n_x1)
+                inter_y1 = max(c_y1, n_y1)
+                inter_x2 = min(c_x2, n_x2)
+                inter_y2 = min(c_y2, n_y2)
+
+                # Compute width and height of intersection box
+                inter_w = max(0, inter_x2 - inter_x1)
+                inter_h = max(0, inter_y2 - inter_y1)
+                inter_area = inter_w * inter_h
+
+                # If there is no overlap, keep the box
+                if inter_area == 0:
+                    filtered_preds.append(next_box)
+                    continue
+
+                # Compute IoU (Intersection over Union)
+                n_area = (n_x2 - n_x1) * (n_y2 - n_y1)
+                union_area = c_area + n_area - inter_area
+                iou = inter_area / union_area if union_area > 0 else 0
+
+                # If IoU is below the threshold, keep the lower-confidence box.
+                # If IoU >= threshold, it gets dropped (suppression).
+                if iou < iou_threshold:
+                    filtered_preds.append(next_box)
+
+            # Update remaining list with non-suppressed boxes
+            sorted_preds = filtered_preds
+
+        return keep_boxes
+
+    def get_handle_info(self):
+        x = -1
+        y = -1
+        area = -1
     def reset_vision(self):
         """
         Resets the internal vision board state baseline to empty.
@@ -40,6 +114,47 @@ class BoardVision:
         self.confidence = self.confidence_threshold
 
 
+        max_conf = 0
+
+        for x1, y1, x2, y2, label, conf in self.last_predictions_clean:
+            box_area = (x2 - x1) * (y2 - y1)
+
+            if conf > max_conf and box_area > 13000:
+                max_conf = conf
+
+                x = (x1 + x2) // 2
+                y = (y1 + y2) // 2
+                area = box_area
+        
+        return (x, y, area)
+
+    def draw_model_predictions(self, frame):
+        """
+        Draw the cached predictions on every frame; only run YOLO
+        (and refresh the cache) every self.infer_every_n frames.
+        """
+
+        if self.frame_count % self.infer_every_n == 0:
+            results = self.model.predict(frame, conf=0.25, verbose=False)[0]
+            self.last_predictions = [
+                (*map(int, box.tolist()), self.model.names[int(cls)], float(conf))
+                for box, cls, conf in zip(results.boxes.xyxy, results.boxes.cls, results.boxes.conf)
+            ]
+            self.last_predictions_clean = self.apply_nms(self.last_predictions)
+
+        cv2.circle(img=frame, center=(1080, 195), radius=15, color=(255,255,255))
+
+        for x1, y1, x2, y2, label, conf in self.last_predictions_clean:
+            pos_x = (x1 + x2) // 2
+            pos_y = (y1 + y2) // 2
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
+
+            area = (x2-x1) * (y2-y1)
+
+            cv2.putText(frame, f"{label} {conf:.2f}, Pos: ({pos_x}, {pos_y}), Area: {area}", (x1, max(y1 - 8, 0)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
+            
+        return frame
 
     def get_tile_from_piece(self, px, py, pw, ph):
         """
@@ -168,7 +283,9 @@ class BoardVision:
             time.sleep(0.1)
         print("new board status detected!")
         return self.get_board()
-
+    
+    def get_cap(self):
+        return self.cap
 
     def process_detected_piece(self, px, py, pw, ph, is_red):
         """
@@ -208,8 +325,12 @@ class BoardVision:
         upper_red1 = np.array([15, 255, 255])
         lower_red2 = np.array([160, 0, 0])
         upper_red2 = np.array([180, 255, 255])
-        lower_blue = np.array([80, 100, 80])
+        lower_blue = np.array([100, 170, 80])
         upper_blue = np.array([120, 255, 255])
+
+        lower_blue_close = np.array([111, 197, 70])
+        upper_blue_close = np.array([120, 215, 90])
+
         lower_green = np.array([40, 100, 90])
         upper_green = np.array([90, 255, 255])
 
@@ -217,6 +338,10 @@ class BoardVision:
             ret, frame = cap.read()
             if not ret:
                 break
+
+            if self.use_yolo:
+                self.frame_count += 1
+                annotated_frame = self.draw_model_predictions(frame)   # always called; internally decides whether to re-infer
 
             if ret:
                 height, width = frame.shape[:2]
@@ -232,14 +357,15 @@ class BoardVision:
 
                 # Crop and resize
                 zoomed_frame = frame[y1:y2, x1:x2]
-                frame = cv2.resize(zoomed_frame, (width, height))
+                #frame = cv2.resize(zoomed_frame, (width, height))
             board_seen = False
             hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
             red_mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
             red_mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
             red_mask = cv2.bitwise_or(red_mask1, red_mask2)
 
-            blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)        
+            blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)   
+            blue_mask_close = cv2.inRange(hsv, lower_blue_close, upper_blue_close)     
             green_mask = cv2.inRange(hsv, lower_green, upper_green)
 
             contours_green, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -292,16 +418,21 @@ class BoardVision:
                     self.board_window[n] = self.board_window[n]*0.9
                 self.update_board_state()
             if self.main:
-                cv2.imshow("Camera View", frame)
+                cv2.imshow("Camera View", annotated_frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
+                if cv2.waitKey(1) & 0xFF == ord('c'):
+                    self.print_handle_info()
+                if cv2.waitKey(1) & 0xFF == ord('b'):
+                    print()
+                    
         cap.release()
         cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
     main=True
-    board = BoardVision(True, 4) #<- change the number around until you connect to the usb camera
+    board = BoardVision(True, 4, use_yolo=False) #<- change the number around until you connect to the usb camera
 
     if not main:
         while True:
