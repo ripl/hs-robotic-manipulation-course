@@ -562,7 +562,7 @@ if __name__ == "__main__":
     parser.add_argument("--cam", type=int, default=4, help="Camera index (default: 4)")
     args = parser.parse_args()
 
-    vision = BoardVision(False, args.cam)
+    vision = BoardVision(False, args.cam, use_yolo=False)
     ui = TicTacToeUI(size=args.size)
     ui.run()
     if hasattr(ui.arm_player, 'arm'):

@@ -8,7 +8,7 @@ class BoardVision:
     """
     Automatically detects the TicTacToe board state using a camera!
     """
-    def __init__(self,main=False,cam=0,use_yolo=False, weights_path="best.pt"):
+    def __init__(self,main=False,cam=0,use_yolo=False, weights_path="handle_model.pt"):
         """
         No need to change anything!
         """
@@ -432,7 +432,7 @@ class BoardVision:
 
 if __name__ == "__main__":
     main=True
-    board = BoardVision(True, 4, use_yolo=False) #<- change the number around until you connect to the usb camera
+    board = BoardVision(main=True, cam=0, use_yolo=False) #<- change the number around until you connect to the usb camera
 
     if not main:
         while True:
