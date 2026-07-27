@@ -1,3 +1,6 @@
+import sys, os, time
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import cv2
 import numpy as np
 import threading
@@ -5,11 +8,25 @@ import time
 import argparse
 import sys
 
+"""
+camera_capture is used to take photos from the USB camera, which can be used as data
+for machine learning models.
+When running with no flags, press the 'c' key to manually take a screenshot.
+Press 'q' with the window in focus to close the program.
+You may need to adjust the camera value on line 108.
+If you do not want this program to overwrite existing files, make sure to change
+the screenshot count on line 44.
+
+Flags:
+    -t: If this flag is included, the program will take a screenshot every 0.5 seconds.
+        This flag will also disable the ability to manually take photos.
+"""
+
 class BoardVision:
     """
     Automatically detects the TicTacToe board state using a camera!
     """
-    def __init__(self, main=False, cam=0, use_timer=False):
+    def __init__(self, main=False, cam=4, use_timer=False):
         """
         No need to change anything!
         """
@@ -56,7 +73,7 @@ class BoardVision:
         self.h = h
 
     def take_screenshot(self, frame):
-        filename = f"data-{self.screenshot_count}.jpg"
+        filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"captures/data-{self.screenshot_count}.jpg")
         cv2.imwrite(filename, frame)
         print(f"Saved {filename}")
         self.screenshot_count += 1
@@ -95,4 +112,4 @@ if __name__ == "__main__":
     parser.add_argument("-t", action="store_true", help="Automatically take a screenshot every 0.5 seconds instead of capturing on keypress")
     args = parser.parse_args()
 
-    board = BoardVision(True, 0, use_timer=args.t) #<- change the number around until you connect to the usb camera
+    board = BoardVision(True, 4, use_timer=args.t) #<- change the number around until you connect to the usb camera
