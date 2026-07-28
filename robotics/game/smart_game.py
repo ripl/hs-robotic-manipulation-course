@@ -239,11 +239,12 @@ class TicTacToe:
         else:
             self.curr_turn = self.p1.piece
 
-    def current_player_wins(self):
-        """String representation of the winner,
-        Checks to see if the current player has a winning triple.
+    def player_wins(self, piece):
+        """
+        Checks to see if the specified player piece has a winning triple.
         
-        :returns: True if the current player has won, False otherwise.
+        :param piece: 'x' or 'o'
+        :returns: True if the piece has won, False otherwise.
         """
         winning_triples = [
             (0, 1, 2), (3, 4, 5), (6, 7, 8),  # horizontal
@@ -251,10 +252,17 @@ class TicTacToe:
             (0, 4, 8), (2, 4, 6)              # diagonal
         ]
         for x, y, z in winning_triples:
-            if self.board[x] is not None and self.board[x] == self.board[y] == self.board[z]:
-
+            if self.board[x] == piece and self.board[y] == piece and self.board[z] == piece:
                 return True
         return False
+
+    def current_player_wins(self):
+        """String representation of the winner,
+        Checks to see if the current player has a winning triple.
+        
+        :returns: True if the current player has won, False otherwise.
+        """
+        return self.player_wins(self.curr_turn)
 
     def get_winner(self):
         """
