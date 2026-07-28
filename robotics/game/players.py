@@ -263,18 +263,17 @@ class SmartArm(Arm):
             opp_piece = game.p1.piece
 
         for move in possible_moves:
-            self.pseudo_place_piece(game, move, self.piece)
-            win = game.current_player_wins()
-            self.pseudo_undo(game, move)
+            game.board[move] = self.piece
+            win = game.player_wins(self.piece)
+            game.board[move] = None
             if win:
                 game.place_piece(move)
                 return
         
         for move in possible_moves:
-            game.update()
-            self.pseudo_place_piece(game, move, opp_piece)
-            block = game.current_player_wins()
-            self.pseudo_undo(game, move)
+            game.board[move] = opp_piece
+            block = game.player_wins(opp_piece)
+            game.board[move] = None
             if block:
                 game.place_piece(move)
                 return
