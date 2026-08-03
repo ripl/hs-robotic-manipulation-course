@@ -86,7 +86,7 @@ def main():
 
     # Record positions for each square and pose type
     for square in SQUARES:
-        print(f'Record positions for square {square}. Press enter to record. Press s to skip. Press q to skip all squares.')
+        print(f'Record positions for square {square}. Press enter to record. Press s to skip. Press q to close the program.')
         user_input = input()
         if user_input == 's':
             continue

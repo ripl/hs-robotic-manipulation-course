@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 import threading
 import time
-from ultralytics import YOLO
 
 class BoardVision:
     """
@@ -24,16 +23,7 @@ class BoardVision:
         self.confidence_threshold = 100
         self.main = main
         self.cap = cv2.VideoCapture(cam) #Tune this number until you get the USB camera!
-
-        # Load YOLO model
         self.use_yolo = use_yolo
-
-        if use_yolo:
-            self.frame_count = 0
-            self.last_predictions = []
-            self.model = YOLO(weights_path)
-            self.infer_every_n = 3
-            self.last_predictions_clean = []
 
         if main:
             self.cap_board_state()
@@ -142,34 +132,6 @@ class BoardVision:
                 area = box_area
         
         return (x, y, area)
-
-    def draw_model_predictions(self, frame):
-        """
-        Draw the cached predictions on every frame; only run YOLO
-        (and refresh the cache) every self.infer_every_n frames.
-        """
-
-        if self.frame_count % self.infer_every_n == 0:
-            results = self.model.predict(frame, conf=0.25, verbose=False)[0]
-            self.last_predictions = [
-                (*map(int, box.tolist()), self.model.names[int(cls)], float(conf))
-                for box, cls, conf in zip(results.boxes.xyxy, results.boxes.cls, results.boxes.conf)
-            ]
-            self.last_predictions_clean = self.apply_nms(self.last_predictions)
-
-        cv2.circle(img=frame, center=(1080, 195), radius=15, color=(255,255,255))
-
-        for x1, y1, x2, y2, label, conf in self.last_predictions_clean:
-            pos_x = (x1 + x2) // 2
-            pos_y = (y1 + y2) // 2
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
-
-            area = (x2-x1) * (y2-y1)
-
-            cv2.putText(frame, f"{label} {conf:.2f}, Pos: ({pos_x}, {pos_y}), Area: {area}", (x1, max(y1 - 8, 0)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
-            
-        return frame
 
     def get_tile_from_piece(self, px, py, pw, ph):
         """
@@ -354,10 +316,6 @@ class BoardVision:
             if not ret:
                 break
 
-            if self.use_yolo:
-                self.frame_count += 1
-                annotated_frame = self.draw_model_predictions(frame)   # always called; internally decides whether to re-infer
-
             if ret:
                 height, width = frame.shape[:2]
 
@@ -447,7 +405,7 @@ class BoardVision:
 
 if __name__ == "__main__":
     main=True
-    board = BoardVision(main=True, cam=4, use_yolo=False) #<- change the number around until you connect to the usb camera
+    board = BoardVision(main=True, cam=4) #<- change the number around until you connect to the usb camera
 
     if not main:
         while True:
