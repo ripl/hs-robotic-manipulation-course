@@ -5,6 +5,7 @@ from pathlib import Path
 from collections import deque
 from typing import List
 from pygame_arm import PygameArm
+import _sysconfigdata__darwin_darwin
 
 # import basic pygame modules
 import pygame as pg
@@ -19,6 +20,18 @@ GRAVITY = 0.6                 # px/frame^2 applied to thrown helicopters
 GRIPPER_HISTORY_LEN = 5       # how many frames of gripper motion to average for velocity
 MIN_THROW_SPEED = 1.0         # below this speed, a "release" is treated as a drop, not a throw
 SPAWN_POS = Vector2(800, 160) # where a helicopter respawns after leaving the screen
+
+# --- Explosion FX constants ---
+EXPLOSION_Y_THRESHOLD = 420     # a thrown helicopter explodes once it rises above this y
+EXPLOSION_PARTICLE_COUNT = 26  # debris pieces per explosion
+EXPLOSION_COLORS = [
+    (255, 90, 20),
+    (255, 160, 40),
+    (255, 220, 90),
+    (255, 255, 255),
+    (90, 90, 90),
+    (50, 50, 50),
+]
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
@@ -96,8 +109,94 @@ class Joint(pg.sprite.Sprite):
         self.pos = pos
 
 
+class Particle:
+    """A single primitive-shape debris piece used for the explosion FX.
+    Drawn as either a filled circle or a small tumbling square, no images
+    involved - just pg.draw calls."""
+
+    def __init__(self, pos, velocity, color, size, lifetime, shape="circle"):
+        self.pos = Vector2(pos)
+        self.velocity = Vector2(velocity)
+        self.color = color
+        self.size = size
+        self.start_size = size
+        self.lifetime = lifetime
+        self.age = 0
+        self.shape = shape
+        self.angle = random.uniform(0, 360)
+        self.spin = random.uniform(-18, 18)
+
+    def update(self):
+        self.age += 1
+        self.velocity.y += GRAVITY * 0.4  # lighter than the helicopter's own gravity, floatier debris
+        self.velocity *= 0.95             # drag, so the burst slows down instead of flying forever
+        self.pos += self.velocity
+        self.angle += self.spin
+        # Shrink linearly over its lifetime so it fades out rather than just vanishing.
+        life_fraction = max(0.0, 1 - self.age / self.lifetime)
+        self.size = self.start_size * life_fraction
+
+    def is_alive(self):
+        return self.age < self.lifetime and self.size > 0.5
+
+    def draw(self, screen):
+        if self.size < 0.5:
+            return
+        if self.shape == "circle":
+            pg.draw.circle(screen, self.color, (int(self.pos.x), int(self.pos.y)), int(self.size))
+        else:
+            # Small rotated square "debris" built from four hand-rotated corners.
+            half = self.size
+            corners = []
+            for dx, dy in ((-half, -half), (half, -half), (half, half), (-half, half)):
+                corner = Vector2(dx, dy).rotate(self.angle) + self.pos
+                corners.append((corner.x, corner.y))
+            pg.draw.polygon(screen, self.color, corners)
+
+
+class Shockwave:
+    """An expanding ring outline - the 'flash' at the center of the explosion.
+    Duck-types the same update()/is_alive()/draw() interface as Particle so
+    both can live in the same effects list."""
+
+    def __init__(self, pos, color=(255, 235, 160), max_radius=55, lifetime=14):
+        self.pos = Vector2(pos)
+        self.color = color
+        self.max_radius = max_radius
+        self.lifetime = lifetime
+        self.age = 0
+
+    def update(self):
+        self.age += 1
+
+    def is_alive(self):
+        return self.age < self.lifetime
+
+    def draw(self, screen):
+        progress = self.age / self.lifetime
+        radius = int(self.max_radius * progress)
+        width = max(1, int(6 * (1 - progress)))
+        if radius > 0:
+            pg.draw.circle(screen, self.color, (int(self.pos.x), int(self.pos.y)), radius, width)
+
+
+def spawn_explosion(pos, effects: list):
+    """Populate `effects` with a burst of primitive-shape particles plus one
+    shockwave ring, centered on `pos`."""
+    for _ in range(EXPLOSION_PARTICLE_COUNT):
+        angle = random.uniform(0, 2 * math.pi)
+        speed = random.uniform(2.5, 9.5)
+        velocity = Vector2(math.cos(angle), math.sin(angle)) * speed
+        color = random.choice(EXPLOSION_COLORS)
+        size = random.uniform(3, 9)
+        lifetime = random.randint(18, 38)
+        shape = "circle" if random.random() < 0.7 else "square"
+        effects.append(Particle(pos, velocity, color, size, lifetime, shape))
+    effects.append(Shockwave(pos))
+
+
 class Helicopter(pg.sprite.Sprite):
-    def __init__(self, pos, claw, image="./sprites/helicopter.png"):
+    def __init__(self, pos, claw, image="./sprites/helicopter.png", on_explode=None):
         super().__init__()
         self.image = pg.image.load(image).convert_alpha()
         self.image = pg.transform.scale_by(self.image, 3.0)
@@ -106,12 +205,15 @@ class Helicopter(pg.sprite.Sprite):
         self.rect = self.image.get_rect(center=pos)
         self.pos = Vector2(pos)
         self.claw = claw
+        self.on_explode = on_explode  # callback(pos) - called when the helicopter blows up
 
         # --- Grab / throw state ---
         self.grabbed = False        # currently held by the claw
         self.thrown = False         # currently in free flight after being released
         self.velocity = Vector2(0, 0)  # px/frame velocity while thrown
         self.spin_speed = 0.0       # cosmetic spin while thrown, derived from throw speed
+        self.age = 0
+        self.speed = 3
 
         # Reference values captured at the instant of grab, used to hold the
         # helicopter at a fixed offset/orientation relative to the claw
@@ -155,8 +257,17 @@ class Helicopter(pg.sprite.Sprite):
         self.thrown = False
         self.velocity = Vector2(0, 0)
         self.angle = -10
+        self.speed = 3
+
+    def explode(self):
+        """Trigger the explosion FX at the helicopter's current position (if
+        a callback was wired up) and send it back to spawn."""
+        if self.on_explode:
+            self.on_explode(Vector2(self.pos))
+        self.respawn()
 
     def update(self):
+        self.age += 1
         if self.grabbed:
             # Stay at the fixed offset/angle captured at grab time, rotated
             # by however much the claw's angle has changed since then. At
@@ -176,14 +287,16 @@ class Helicopter(pg.sprite.Sprite):
             self.rect.center = self.pos
             self.angle += self.spin_speed
 
-            # Once it leaves the play area, send it back to start so the
-            # player can grab another one.
-            if not SCREENRECT.inflate(200, 200).colliderect(self.rect):
+            # Thrown too high -> blow up instead of flying on. Checked before
+            # the generic off-screen respawn since y=50 is still on-screen.
+            if self.pos.y > EXPLOSION_Y_THRESHOLD:
+                self.explode()
+            elif not SCREENRECT.inflate(200, 200).colliderect(self.rect):
                 self.respawn()
 
         else:
             # Idle behavior: drift left, same as the original game.
-            self.pos -= Vector2(3, 0)
+            self.pos -= Vector2(self.speed, 0)
             self.rect.center = self.pos
             if self.pos.x < SCREENRECT.left - 100:
                 self.respawn()
@@ -204,12 +317,26 @@ def main(winstyle=0):
     static_gripper = Joint(image=str(sprites_path / "static_gripper.png"), pivot=(0, 16), length=0)
     dynamic_gripper = Joint(image=str(sprites_path / "dynamic_gripper.png"), pivot=(-20, 30))
 
-    helicopter = Helicopter(Vector2(800, 160), claw=dynamic_gripper, image=str(sprites_path / "helicopter.png"))
+    # Explosion particles/shockwaves currently on screen. Populated via the
+    # on_explode callback handed to the helicopter below.
+    effects: List = []
+
+    def on_helicopter_explode(pos):
+        spawn_explosion(pos, effects)
+
+    helicopter = Helicopter(
+        Vector2(800, 160),
+        claw=dynamic_gripper,
+        image=str(sprites_path / "helicopter.png"),
+        on_explode=on_helicopter_explode,
+    )
 
     joints = [shoulder, forearm, wrist, static_gripper]
     servos = [2, 3, 4, 6]
-    signs = [0.5, -0.5, -0.5, 1.0]
-    offsets = [90, 185, 180, 0]
+    signs = [0.5, -0.5, -0.5, 0.5]
+    offsets = [90, 180, 180, 20]
+
+    max_speed = 3
 
     all_sprites = pg.sprite.Group(joints, dynamic_gripper, dynamic_gripper, helicopter)
     helicopters = pg.sprite.Group(helicopter)
@@ -217,11 +344,17 @@ def main(winstyle=0):
     bg_original = pg.image.load(str(sprites_path / "background.png")).convert()
     background = pg.transform.scale(bg_original, (640, 480))
 
-    arm = PygameArm(leader=False, claw=6, config_path = str(robotics / "config.json"))
+    arm = PygameArm(leader=False, claw=6, config_path=str(robotics / "config.json"))
 
     # --- Gripper velocity tracking, used to compute throw speed on release ---
     gripper_positions = deque(maxlen=GRIPPER_HISTORY_LEN)
     claw_was_closed = False
+
+    pg.init()
+
+    font = pg.font.SysFont("Arial", 24)
+    fastest_velocity = 0
+    previous_velocity = 0
 
     while True:
         # Quit Logic
@@ -267,6 +400,11 @@ def main(winstyle=0):
 
         claw_closed = arm.is_claw_closed()
 
+        highscore_surface = font.render(f"Fastest Throw: {fastest_velocity:.2f}mph", True, (255, 255, 255))
+        highscore_rect = highscore_surface.get_rect(center=(320, 25))
+        prevscore_surface = font.render(f"Previous Throw: {previous_velocity:.2f}mph", True, (255, 255, 255))
+        prevscore_rect = prevscore_surface.get_rect(center=(320, 50))
+
         # Collision Checks
         # Detect collisions between claw and helicopter -> pick up
         for heli in pg.sprite.spritecollide(dynamic_gripper, helicopters, 0):
@@ -279,13 +417,26 @@ def main(winstyle=0):
             for heli in helicopters:
                 if heli.grabbed:
                     throw_velocity = gripper_velocity if gripper_velocity.length() >= MIN_THROW_SPEED else Vector2(0, 0)
+                    if throw_velocity.length() > fastest_velocity:
+                        fastest_velocity = throw_velocity.length()
+                    previous_velocity = throw_velocity.length()
                     heli.throw(throw_velocity)
 
         claw_was_closed = claw_closed
 
         all_sprites.update()
+
+        # Update explosion FX and drop any that have finished playing out.
+        for effect in effects:
+            effect.update()
+        effects[:] = [effect for effect in effects if effect.is_alive()]
+
         screen.blit(background, (0, 0))
+        screen.blit(highscore_surface, highscore_rect)
+        screen.blit(prevscore_surface, prevscore_rect)
         all_sprites.draw(screen)
+        for effect in effects:
+            effect.draw(screen)
         """
         for link in joints:
             pg.draw.circle(screen, (255, 128, 0), [int(i) for i in link.pos], 3)
