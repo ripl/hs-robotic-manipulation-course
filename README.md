@@ -141,4 +141,9 @@ This program lets you play tic-tac-toe against the robotic arm using the poses y
 If the `gamevision.py` program does not work, it may be using the wrong camera. In this case, run `python gamevision.py --cam X`, replacing X with the cam value that worked with `vision.py`.
 
 ## Experimental/Unimplemented Features
+`track_piece.py`: This program is meant to adjust the arm during a grab in case the positions are inaccurate.
+
+`calibration.py`: This program is meant to find out what effects each motor has on the size and position of handles in the camera's view. `track_piece.py` will leverage these values in the future.
+
+`move_predictor.py`: This program is meant to display the future output of `track_piece.py`
 This section is a work in progress.
