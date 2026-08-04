@@ -379,10 +379,6 @@ class BoardVision:
                 cv2.imshow("Camera View", frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
-                if cv2.waitKey(1) & 0xFF == ord('c'):
-                    self.print_handle_info()
-                if cv2.waitKey(1) & 0xFF == ord('b'):
-                    print()
                     
         cap.release()
         cv2.destroyAllWindows()
@@ -395,7 +391,6 @@ if __name__ == "__main__":
     if not main:
         while True:
             if board.latest_frame is not None:
-                print("A")
                 cv2.imshow("Camera View", board.latest_frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break

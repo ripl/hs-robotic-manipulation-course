@@ -249,11 +249,6 @@ class SmartArm(Arm):
 
         :param game: The current game instance.
         """
-        winning_triples = [
-            (0, 1, 2), (3, 4, 5), (6, 7, 8),  # horizontal
-            (0, 3, 6), (1, 4, 7), (2, 5, 8),  # vertical
-            (0, 4, 8), (2, 4, 6)              # diagonal
-        ]
 
         possible_moves = self.get_possible_moves(game)
 
@@ -281,32 +276,61 @@ class SmartArm(Arm):
         self.novice(game)
        
 
-    def minimax(self, is_max_turn, maximizer_mark, game, depth):
+    def minimax(self, is_maximizing, piece, game, depth):
         """
         Implement the minimax algorithm to determine the best move for the AI.
 
-        :param is_max_turn: A boolean indicating if the current player is the maximizing player.
-        :param maximizer_mark: The mark of the maximizing player ('x' or 'o').
+        :param is_maximizing: A boolean indicating if the current player is the maximizing player.
+        :param piece: The mark of the maximizing player ('x' or 'o').
         :param game: The current game instance.
         :param depth: The depth of the current call.
         :return: The optimal move score for the current board state.
         """
-        if game.get_winner() is not None and game.get_winner() != self.piece:
+
+        if piece=="o":
+            other_piece="x"
+        else:
+            other_piece="o"
+        win = game.player_wins(piece)
+        block = game.player_wins(other_piece)
+        if win:
             return 10 - depth
-        elif game.get_winner() == self.piece:
+        elif block:
             return depth - 10
         elif game.determine_draw():
             return 0
         
-        depth += 1
-
-        scores = []
-        for pos in self.get_possible_moves(game):
-            self.pseudo_place_piece(game, pos, maximizer_mark)
-            scores.append(self.minimax(not is_max_turn, game.curr_turn, game, depth))
-            self.pseudo_undo(game, pos)
-
-        return max(scores) if is_max_turn else min(scores)
+        possible_plays = self.get_possible_moves(game)      
+        if is_maximizing:
+            # if it is the maximizing player's turn (computer), 
+            # we want to maximize the score
+            best_score = float("-inf")
+            for move in possible_plays:
+                # Make a calculating move
+                game.board[move] = piece
+                # Recursively call minimax 
+                # with the next depth and the minimizing player
+                score = self.minimax(False, piece, game, depth + 1)
+                # Reset the move
+                game.board[move] = None
+                # Update the best score
+                best_score = max(score, best_score)
+            return best_score
+        else:
+        # if it is the minimizing player's turn (human), 
+        # we want to minimize the score
+            best_score = float("inf")
+            for move in possible_plays:
+                # Make a calculating move
+                game.board[move] = other_piece
+                # Recursively call minimax with 
+                # the next depth and the maximizing player
+                score = self.minimax(True, piece, game, depth + 1)
+                # Reset the move
+                game.board[move] = None
+                # Update the best score
+                best_score = min(score, best_score)
+            return best_score
 
     def expert(self, game):
         """
@@ -318,13 +342,13 @@ class SmartArm(Arm):
         best_move = None
         possible_moves = self.get_possible_moves(game)
         random.shuffle(possible_moves)
-        for pos in possible_moves:
-            self.pseudo_place_piece(game, pos, self.piece)
-            score = self.minimax(False, game.curr_turn, game, 0)
-            self.pseudo_undo(game, pos)
+        for move in possible_moves:
+            game.board[move] = self.piece
+            score = self.minimax(False, self.piece, game, 0)
+            game.board[move] = None
             if score > best_score:
                 best_score = score
-                best_move = pos
+                best_move = move
         game.place_piece(best_move)
 
     def pseudo_place_piece(self, game, pos, piece):
@@ -345,6 +369,7 @@ class SmartArm(Arm):
         :param game: The current game instance.
         :param pos: The position on the board to clear.
         """
+        print("undo")
         game.board[pos] = None
         game.update()
 
