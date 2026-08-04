@@ -391,7 +391,7 @@ class BoardVision:
                     self.board_window[n] = self.board_window[n]*0.9
                 self.update_board_state()
             if self.main:
-                cv2.imshow("Camera View", annotated_frame)
+                cv2.imshow("Camera View", frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
                 if cv2.waitKey(1) & 0xFF == ord('c'):
