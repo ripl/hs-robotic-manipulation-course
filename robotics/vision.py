@@ -118,21 +118,6 @@ class BoardVision:
         self.true_board_state = [None]*9
         self.confidence = self.confidence_threshold
 
-
-        max_conf = 0
-
-        for x1, y1, x2, y2, label, conf in self.last_predictions_clean:
-            box_area = (x2 - x1) * (y2 - y1)
-
-            if conf > max_conf and box_area > 13000:
-                max_conf = conf
-
-                x = (x1 + x2) // 2
-                y = (y1 + y2) // 2
-                area = box_area
-        
-        return (x, y, area)
-
     def get_tile_from_piece(self, px, py, pw, ph):
         """
         TODO: Step 1
