@@ -315,7 +315,7 @@ class BoardVision:
 
                 # Crop and resize
                 zoomed_frame = frame[y1:y2, x1:x2]
-                #frame = cv2.resize(zoomed_frame, (width, height))
+                frame = cv2.resize(zoomed_frame, (width, height))
             board_seen = False
             hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
             red_mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
@@ -386,7 +386,12 @@ class BoardVision:
 
 if __name__ == "__main__":
     main=True
-    board = BoardVision(main=True, cam=4) #<- change the number around until you connect to the usb camera
+    import argparse
+    parser = argparse.ArgumentParser(description="TicTacToe BoardVision UI")
+    parser.add_argument("--cam", type=int, default=4, help="Camera index (default: 4)")
+    args = parser.parse_args()
+
+    board = BoardVision(main=True, cam=args.cam) #<- change the number around until you connect to the usb camera
 
     if not main:
         while True:
