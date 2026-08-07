@@ -96,7 +96,7 @@ The script will prompt you to enter a servo ID (which we set 1-6 from base to gr
 | Motor 3 (Elbow) | Up +        | Down -      |
 | Motor 4 (Wrist) | Up +        | Down -      |
 | Motor 5 (Wrist) | Right +     | Left -      |
-| Motor 6 (Claw)  | Open +      | Cloe -      |
+| Motor 6 (Claw)  | Open +      | Close -      |
 
 The home position for the follower arm is (2048, 1800, 1850, 1100, 2048, 2048).
 
@@ -130,10 +130,7 @@ Another possibility is that the overloaded motor is tangled in wires. If it is, 
 ## Camera and Vision
 
 ### Using `vision.py`
-Use this file to determine which camera ID corresponds to the USB camera.
-On the line of `vision.py` with the "#<- change the number around" comment, you
-can change the cam value of the BoardVision call until the program shows the USB
-cam output.
+Use this file to determine which camera ID corresponds to the USB camera. On the line of `vision.py` with the "#<- change the number around" comment, you can change the cam value of the BoardVision call until the program shows the USB cam output. Alternatively, you can run `python vision.py --cam X`, to try different numbers to get the camera you want.
 
 ### Using `gamevision.py`
 This program lets you play tic-tac-toe against the robotic arm using the poses you defined in the previous steps.
