@@ -195,7 +195,7 @@ class TicTacToeUI:
             role = "Smart Arm" if isinstance(player_obj, Arm) else "Human"
             piece_str = "Red 'X'" if winner == 'x' else "Blue 'O'"
             status_title = "VICTORY!"
-            status_desc = f"{role} ({piece_str}) Wins!"
+            status_desc = f"{role} Wins!"
             border_color = (34, 139, 34)
             text_color = (34, 139, 34)
             badge_img = X_IMAGE if winner == 'x' else O_IMAGE

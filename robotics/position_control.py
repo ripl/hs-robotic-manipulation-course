@@ -330,7 +330,6 @@ def initiate_action(arm, action):
             return
     print(f"{action} completed successfully.")
 
-
 def handle_user_input(user_input, arm, lead, arm_config):
     """
     Handle user input to control the robotic arm.
@@ -426,6 +425,8 @@ def main():
                     print("Goodbye!")
                     proceed = False
             else:
+                time.sleep(0.5)
+                arm.set_and_wait_goal_pos(arm_config['home_pos'])
                 print('1) Enter "p" to position a specific motor.')
                 print('2) Enter "a" to use a saved action.')
                 print('3) Enter "g" to go to a specific pose within an action.')

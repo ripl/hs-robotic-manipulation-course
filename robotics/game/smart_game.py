@@ -353,11 +353,7 @@ class TicTacToe:
         current_player.move_piece(piece, str(pos))
 
 if __name__ == '__main__':
-
-    p1 = SmartArm('x', lvl=1)
-
-    p2 = SmartArm('o', lvl=2)
-
+    p1 = SmartArm('x', lvl=2)
+    p2 = SmartArm('o', lvl=1)
     game = TicTacToe(p1, p2)
-
     game.reset()

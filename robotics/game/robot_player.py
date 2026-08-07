@@ -22,7 +22,7 @@ arm = Robot(device_name=arm_config['device_name'],
             position_p_gain=arm_config['position_p_gain'],
             position_i_gain=arm_config['position_i_gain'])
 
-# Go to home start position
+# Go to home start position 
 arm.set_and_wait_goal_pos(arm_config['home_pos'])
 
 def move_piece(start, end):

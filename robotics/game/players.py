@@ -128,7 +128,7 @@ class Arm(Player):
         for pose in reversed(valid_poses):
             self.arm.set_and_wait_goal_pos(self.positions[end][pose])
 
-        self.arm.set_and_wait_goal_pos(self.arm_config["home_pos"])
+        self.arm.set_and_wait_goal_pos(self.arm_config['home_pos'])
 
     def adjust_loop(self):
         for i in range(20):

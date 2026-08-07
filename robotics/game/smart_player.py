@@ -68,9 +68,7 @@ class Arm(Player):
 
 
         # Move the arm to the home start position
-        #self.wait_positions = [2048, 1800, 1850, 1100, 2048, 2048]
-        self.wait_positions = [2048, 1550, 2550, 1100, 2048, 2475]
-        self.arm.set_and_wait_goal_pos(self.wait_positions)
+        self.arm.set_and_wait_goal_pos(self.positions['home_pos'])
 
         # NOTE: This list will represent the available "start" pieces.
         self.pieces = ["A", "B", "C", "D", "E"]
@@ -104,7 +102,7 @@ class Arm(Player):
         for pose in reversed(valid_poses):
             self.arm.set_and_wait_goal_pos(self.positions[end][pose])
 
-        self.arm.set_and_wait_goal_pos(self.wait_positions)
+        self.arm.set_and_wait_goal_pos(self.positions['home_pos'])
 
     def clean_board(self, curr_board):
         """
