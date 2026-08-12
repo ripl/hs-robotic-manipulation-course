@@ -14,6 +14,7 @@
       --gray-100: #f7f8fa;
       --good: #0f8a5f;
       --warn: #b45309;
+      --danger: #b42318;
     }
 
     * {
@@ -40,6 +41,10 @@
       margin: 0;
       font-size: 1.05rem;
       font-weight: 700;
+    }
+
+    header button {
+      margin-top: 0;
     }
 
     main {
@@ -106,6 +111,22 @@
 
     button.secondary:hover {
       color: #fff;
+    }
+
+    button.danger {
+      border-color: var(--danger);
+      color: var(--danger);
+      background: #fff;
+    }
+
+    button.danger:hover {
+      color: #fff;
+      background: var(--danger);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
     }
 
     .row {
@@ -193,6 +214,7 @@
   <header>
     <h1>Teachable Machine Robot Bridge</h1>
     <span id="server-status">Checking server...</span>
+    <button id="quit-button" class="danger">Quit Robot Sorter</button>
   </header>
 
   <main>
@@ -283,6 +305,7 @@
     const webcamContainer = document.getElementById("webcam-container");
     const serialPortInput = document.getElementById("serial-port");
     const setupStatus = document.getElementById("setup-status");
+    const quitButton = document.getElementById("quit-button");
 
     let model = null;
     let webcam = null;
@@ -518,6 +541,33 @@
         checkServer();
       } catch (error) {
         setupStatus.textContent = "Preflight failed: " + error.message;
+      }
+    });
+
+    quitButton.addEventListener("click", async () => {
+      const confirmed = window.confirm(
+        "Quit Robot Sorter? If the robot is connected, it will move to its configured rest pose and release torque."
+      );
+      if (!confirmed) return;
+
+      quitButton.disabled = true;
+      sendEnabledInput.checked = false;
+      try {
+        const response = await fetch("/shutdown", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: "{}"
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || "Could not quit Robot Sorter.");
+        running = false;
+        if (webcam) webcam.stop();
+        serverStatus.textContent = "Server: stopped";
+        statusBox.textContent = "Robot Sorter stopped. You may close this browser tab.";
+        lastMessage.textContent = result.message;
+      } catch (error) {
+        quitButton.disabled = false;
+        statusBox.textContent = "Quit failed: " + error.message;
       }
     });
 

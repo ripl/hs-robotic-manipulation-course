@@ -492,6 +492,19 @@ def make_handler(runner, args):
                 if parsed.path == "/preflight":
                     self._send_json(runner.preflight(check_device=True))
                     return
+                if parsed.path == "/shutdown":
+                    if runner.busy:
+                        self._send_json(
+                            {
+                                "ok": False,
+                                "error": "Robot motion is still in progress. Wait for it to finish, then quit again.",
+                            },
+                            status=409,
+                        )
+                        return
+                    self._send_json({"ok": True, "message": "Robot Sorter is shutting down."})
+                    threading.Thread(target=self.server.shutdown, daemon=True).start()
+                    return
                 if parsed.path == "/config/device":
                     self._update_device()
                     return

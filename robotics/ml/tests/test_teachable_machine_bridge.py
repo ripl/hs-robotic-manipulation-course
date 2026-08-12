@@ -170,6 +170,31 @@ class TeachableMachineBridgeTests(unittest.TestCase):
             with self.assertRaises(urllib.error.HTTPError) as error:
                 urllib.request.urlopen(request)
             self.assertEqual(error.exception.code, 400)
+
+            runner._motion_lock.acquire()
+            busy_shutdown_request = urllib.request.Request(
+                base_url + "/shutdown",
+                data=b"{}",
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            try:
+                with self.assertRaises(urllib.error.HTTPError) as error:
+                    urllib.request.urlopen(busy_shutdown_request)
+                self.assertEqual(error.exception.code, 409)
+            finally:
+                runner._motion_lock.release()
+
+            shutdown_request = urllib.request.Request(
+                base_url + "/shutdown",
+                data=b"{}",
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            shutdown_response = urllib.request.urlopen(shutdown_request)
+            self.assertTrue(json.loads(shutdown_response.read())["ok"])
+            thread.join(timeout=2)
+            self.assertFalse(thread.is_alive())
         finally:
             server.shutdown()
             server.server_close()

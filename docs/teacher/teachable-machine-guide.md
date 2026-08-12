@@ -51,7 +51,7 @@ http://127.0.0.1:8765/
 
 4. Confirm the page loads.
 5. Refresh serial devices, choose the Dynamixel adapter, and run preflight if hardware will be used.
-6. Stop the bridge with `Control-C`.
+6. Stop the bridge with **Quit Robot Sorter** in the browser. When running from source in a terminal, `Control-C` also works.
 
 ## Data Collection Guidance
 
