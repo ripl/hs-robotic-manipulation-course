@@ -1,4 +1,6 @@
 # Robotic Manipulation
+
+For portable red/blue object sorting with Teachable Machine, see [`robotics/ml/README.md`](robotics/ml/README.md). Native Windows, macOS, and Linux builds avoid requiring students to install Python or Docker.
 - [Robotic Manipulation](#robotic-manipulation)
 	- [Setup](#setup)
 	- [Controlling the robot](#controlling-the-robot)

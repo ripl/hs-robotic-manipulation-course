@@ -71,7 +71,9 @@
     }
 
     input[type="text"],
-    input[type="number"] {
+    input[type="number"],
+    input[type="file"],
+    select {
       width: 100%;
       padding: 0.55rem 0.65rem;
       border: 1px solid var(--gray-200);
@@ -198,7 +200,9 @@
       <h2>Model and Safety Settings</h2>
 
       <label for="model-url">Teachable Machine model URL</label>
-      <input id="model-url" type="text" placeholder="https://teachablemachine.withgoogle.com/models/MODEL_ID/">
+      <input id="model-url" type="text" placeholder="Bundled model or https://teachablemachine.withgoogle.com/models/MODEL_ID/">
+      <label for="model-files">Or import an exported Teachable Machine model folder</label>
+      <input id="model-files" type="file" accept=".json,.bin" multiple>
 
       <div class="row">
         <div>
@@ -235,6 +239,16 @@
     </section>
 
     <section>
+      <h2>Robot Setup</h2>
+      <label for="serial-port">Dynamixel serial adapter</label>
+      <select id="serial-port"></select>
+      <button id="refresh-ports" class="secondary">Refresh Devices</button>
+      <button id="save-port" class="secondary">Use Selected Device</button>
+      <button id="preflight-button">Run Safe Preflight</button>
+      <div class="status" id="setup-status">Connect the powered robot, then refresh devices.</div>
+    </section>
+
+    <section>
       <h2>Camera</h2>
       <div id="webcam-container"></div>
       <div class="status" id="stable-status">No model running.</div>
@@ -251,10 +265,11 @@
     </section>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.3/dist/teachablemachine-image.min.js"></script>
+  <script src="/assets/vendor/tf.min.js"></script>
+  <script src="/assets/vendor/teachablemachine-image.min.js"></script>
   <script>
     const modelUrlInput = document.getElementById("model-url");
+    const modelFilesInput = document.getElementById("model-files");
     const thresholdInput = document.getElementById("threshold");
     const stableFramesInput = document.getElementById("stable-frames");
     const cooldownInput = document.getElementById("cooldown-ms");
@@ -266,6 +281,8 @@
     const labelContainer = document.getElementById("label-container");
     const serverStatus = document.getElementById("server-status");
     const webcamContainer = document.getElementById("webcam-container");
+    const serialPortInput = document.getElementById("serial-port");
+    const setupStatus = document.getElementById("setup-status");
 
     let model = null;
     let webcam = null;
@@ -273,6 +290,7 @@
     let lastTopClass = null;
     let stableCount = 0;
     let lastSentAt = 0;
+    let configuredDevice = "";
 
     modelUrlInput.value = localStorage.getItem("tm-model-url") || "";
 
@@ -282,7 +300,17 @@
         const health = await response.json();
         const mode = health.execute ? "execute mode" : "dry run";
         const armed = health.armed ? "armed" : "latched; show empty or re-arm";
-        serverStatus.textContent = `Server: ${mode}; ${armed}`;
+        const activity = health.busy ? "; moving" : "";
+        const preflight = health.preflight_passed ? "; preflight passed" : "; preflight required";
+        const fault = health.fault ? `; FAULT: ${health.fault}` : "";
+        serverStatus.textContent = `Server: ${mode}; ${armed}${activity}${preflight}${fault}`;
+        if (!modelUrlInput.value && health.bundled_model) modelUrlInput.value = "/assets/model/";
+        configuredDevice = health.device || "";
+        if (configuredDevice) serialPortInput.value = configuredDevice;
+        thresholdInput.min = health.min_confidence;
+        stableFramesInput.min = health.min_stable_frames;
+        if (Number(thresholdInput.value) < health.min_confidence) thresholdInput.value = health.min_confidence;
+        if (Number(stableFramesInput.value) < health.min_stable_frames) stableFramesInput.value = health.min_stable_frames;
       } catch (error) {
         serverStatus.textContent = "Server: unavailable";
       }
@@ -298,11 +326,27 @@
 
     async function start() {
       try {
-        const baseUrl = normalizeModelUrl(modelUrlInput.value);
-        localStorage.setItem("tm-model-url", baseUrl);
         statusBox.textContent = "Loading model...";
-
-        model = await tmImage.load(baseUrl + "model.json", baseUrl + "metadata.json");
+        const files = Array.from(modelFilesInput.files || []);
+        if (files.length) {
+          const modelFile = files.find((file) => file.name === "model.json");
+          const metadataFile = files.find((file) => file.name === "metadata.json");
+          const weightsFile = files.find((file) => file.name.endsWith(".bin"));
+          if (!modelFile || !metadataFile || !weightsFile) {
+            throw new Error("Select model.json, metadata.json, and the exported .bin weights file.");
+          }
+          model = await tmImage.loadFromFiles(modelFile, weightsFile, metadataFile);
+        } else {
+          const baseUrl = normalizeModelUrl(modelUrlInput.value);
+          localStorage.setItem("tm-model-url", baseUrl);
+          model = await tmImage.load(baseUrl + "model.json", baseUrl + "metadata.json");
+        }
+        const requiredLabels = ["red object", "blue object", "empty", "unknown"];
+        const modelLabels = model.getClassLabels();
+        const missingLabels = requiredLabels.filter((label) => !modelLabels.includes(label));
+        if (missingLabels.length) {
+          throw new Error("Model is missing required labels: " + missingLabels.join(", "));
+        }
         webcam = new tmImage.Webcam(320, 320, true);
         await webcam.setup();
         await webcam.play();
@@ -410,7 +454,11 @@
     });
     document.getElementById("rearm-button").addEventListener("click", async () => {
       try {
-        const response = await fetch("/rearm", {method: "POST"});
+        const response = await fetch("/rearm", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: "{}"
+        });
         const result = await response.json();
         lastMessage.textContent = JSON.stringify(result, null, 2);
         statusBox.textContent = "Sorting re-armed. Clear the pickup area before enabling sending.";
@@ -420,7 +468,61 @@
       }
     });
 
+    async function refreshPorts() {
+      try {
+        const response = await fetch("/ports");
+        const result = await response.json();
+        serialPortInput.innerHTML = "";
+        result.ports.forEach((port) => {
+          const option = document.createElement("option");
+          option.value = port.device;
+          option.textContent = `${port.device} — ${port.description}`;
+          serialPortInput.appendChild(option);
+        });
+        if (configuredDevice) serialPortInput.value = configuredDevice;
+        setupStatus.textContent = result.ports.length
+          ? `Found ${result.ports.length} serial device(s).`
+          : "No serial devices found. Check USB, robot power, and drivers.";
+      } catch (error) {
+        setupStatus.textContent = "Device scan failed: " + error.message;
+      }
+    }
+
+    document.getElementById("refresh-ports").addEventListener("click", refreshPorts);
+    document.getElementById("save-port").addEventListener("click", async () => {
+      try {
+        const response = await fetch("/config/device", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({device: serialPortInput.value})
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || "Could not save device.");
+        setupStatus.textContent = `Saved ${result.device}. Run preflight next.`;
+        checkServer();
+      } catch (error) {
+        setupStatus.textContent = "Save failed: " + error.message;
+      }
+    });
+    document.getElementById("preflight-button").addEventListener("click", async () => {
+      try {
+        setupStatus.textContent = "Checking configuration, device, and poses...";
+        const response = await fetch("/preflight", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: "{}"
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || "Preflight failed.");
+        setupStatus.textContent = `Preflight passed: ${result.servo_count} servos on ${result.device}.`;
+        checkServer();
+      } catch (error) {
+        setupStatus.textContent = "Preflight failed: " + error.message;
+      }
+    });
+
     checkServer();
+    refreshPorts();
   </script>
 </body>
 </html>

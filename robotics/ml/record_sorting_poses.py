@@ -7,11 +7,12 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-
-BASE_DIR = Path(__file__).resolve().parents[2]
-ML_DIR = Path(__file__).resolve().parent
-DEFAULT_CONFIG_PATH = BASE_DIR / "robotics" / "config.json"
-DEFAULT_ACTIONS_PATH = BASE_DIR / "robotics" / "actions.json"
+from teachable_machine_bridge import (
+    BASE_DIR,
+    DEFAULT_ACTIONS_PATH,
+    DEFAULT_CONFIG_PATH,
+    prepare_runtime_files,
+)
 LOCATIONS = ["pickup", "red_bin", "blue_bin"]
 POSES = ["hover", "pre-grasp", "grasp", "post-grasp"]
 
@@ -40,10 +41,10 @@ def parse_args():
     return parser.parse_args()
 
 
-def backup_actions(actions_path):
+def backup_json(path):
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    backup_path = actions_path.with_name(f"{actions_path.stem}.{timestamp}.backup{actions_path.suffix}")
-    shutil.copy2(actions_path, backup_path)
+    backup_path = path.with_name(f"{path.stem}.{timestamp}.backup{path.suffix}")
+    shutil.copy2(path, backup_path)
     return backup_path
 
 
@@ -76,6 +77,7 @@ def record_pose(robot, location, pose):
 
 
 def main():
+    prepare_runtime_files()
     args = parse_args()
     config = load_json(args.config)
     if not isinstance(config, dict) or "arm" not in config:
@@ -99,17 +101,27 @@ def main():
     try:
         robot = robot_from_config(config)
         print("\nRecord the fixed physical layout without moving the camera, pickup spot, or bins.")
+        print("\n=== Recording safe home/rest position ===")
+        home_position = record_pose(robot, "configuration", "safe home/rest")
         recorded = {}
         for location in LOCATIONS:
             print(f"\n=== Recording {location} ===")
             recorded[location] = {pose: record_pose(robot, location, pose) for pose in POSES}
 
         if args.actions.exists():
-            backup_path = backup_actions(args.actions)
+            backup_path = backup_json(args.actions)
             print(f"Backed up existing actions to {backup_path}")
+        if args.config.exists():
+            config_backup = backup_json(args.config)
+            print(f"Backed up existing config to {config_backup}")
         actions.update(recorded)
         args.actions.write_text(json.dumps(actions, indent=2) + "\n")
+        config["arm"]["home_pos"] = home_position
+        config["arm"]["rest_pos"] = home_position
+        config["arm"]["sorting_calibrated"] = True
+        args.config.write_text(json.dumps(config, indent=2) + "\n")
         print(f"Saved sorting poses to {args.actions}")
+        print(f"Saved safe home/rest calibration to {args.config}")
     finally:
         if robot is not None:
             try:

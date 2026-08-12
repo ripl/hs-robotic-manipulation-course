@@ -24,7 +24,7 @@ Do not start by letting predictions move the physical arm. Start with the dry-ru
 - Two visually distinct objects: one red and one blue.
 - A clear camera position.
 - The course repository.
-- Internet access for Teachable Machine and the TensorFlow.js libraries.
+- Internet access for training in Teachable Machine. Packaged inference can run offline when the exported model is bundled or selected from disk.
 - Optional: robotic arm with recorded actions.
 
 ## Before Class
@@ -40,7 +40,7 @@ mkdocs serve
 2. Confirm the bridge starts in dry-run mode:
 
 ```bash
-python robotics/ml/teachable_machine_bridge.py
+python robotics/ml/teachable_machine_bridge.py --open-browser
 ```
 
 3. Open:
@@ -50,7 +50,8 @@ http://127.0.0.1:8765/
 ```
 
 4. Confirm the page loads.
-5. Stop the bridge with `Control-C`.
+5. Refresh serial devices, choose the Dynamixel adapter, and run preflight if hardware will be used.
+6. Stop the bridge with `Control-C`.
 
 ## Data Collection Guidance
 
@@ -124,6 +125,8 @@ Then:
 ```bash
 python robotics/ml/teachable_machine_bridge.py --execute
 ```
+
+On a recipient computer, prefer the native `RobotSorter` release instead of asking the instructor to install Python. Use `RobotPoseRecorder` once for that arm and fixed physical layout, then retain the generated application-data folder as that arm's calibration backup.
 
 ## Failure Modes To Teach
 

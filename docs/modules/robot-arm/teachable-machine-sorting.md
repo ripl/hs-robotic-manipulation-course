@@ -51,12 +51,12 @@ Use explicit negative classes. They make the robot much safer.
 4. Collect examples for each class using the same camera position and lighting that the robot will use.
 5. Train the model.
 6. Test the model in Teachable Machine.
-7. Export the model and copy the hosted model URL.
+7. Export the model files for offline use, or copy the hosted model URL.
 8. Start the local bridge:
 
 ```bash
 cd hs-robotic-manipulation-course
-python robotics/ml/teachable_machine_bridge.py
+python robotics/ml/teachable_machine_bridge.py --open-browser
 ```
 
 9. Open:
@@ -65,7 +65,7 @@ python robotics/ml/teachable_machine_bridge.py
 http://127.0.0.1:8765/
 ```
 
-10. Paste the model URL into the page and start the camera.
+10. Select the exported model files or paste the model URL, then start the camera.
 11. Confirm predictions are stable before enabling **Send stable predictions to Python**.
 
 ## Dry-Run First
@@ -119,7 +119,7 @@ This is a fixed-location demo, not object localization. Before physical executio
 python robotics/ml/record_sorting_poses.py
 ```
 
-The script appends `pickup`, `red_bin`, and `blue_bin` to `robotics/actions.json`; each location has `hover`, `pre-grasp`, `grasp`, and `post-grasp` poses. It creates a timestamped backup before writing and refuses to replace existing sorting poses unless `--overwrite` is given.
+The script first records a safe home/rest position, then appends `pickup`, `red_bin`, and `blue_bin` to `robotics/actions.json`; each location has `hover`, `pre-grasp`, `grasp`, and `post-grasp` poses. It marks the profile calibrated, creates timestamped backups before writing, and refuses to replace existing sorting poses unless `--overwrite` is given.
 
 For the pickup position, record the arm moving from open/above the object to closed/lifted. For each bin, record the reverse placement path: above/closed, at drop height/closed, at drop height/open, then above/open.
 
@@ -132,7 +132,7 @@ The demo page only sends a prediction when:
 - sending is enabled by the user,
 - enough time has passed since the previous send.
 
-The Python bridge also starts in dry-run mode. Physical movement requires the instructor to start it with `--execute`.
+The Python bridge repeats the confidence and stable-frame checks server-side, serializes motion requests, and starts in dry-run mode. Physical movement requires the instructor to start it with `--execute`.
 
 After one red or blue command, the bridge latches and suppresses repeat sorting. It re-arms after a stable `empty` prediction or an explicit **Re-arm Sorting** button click.
 
@@ -155,6 +155,12 @@ post-grasp
 ```
 
 Use physical execution only after checking the workspace, unplugging hazards, and confirming students know how to disconnect power.
+
+If a motion does not settle within the configured timeout, the bridge faults, attempts to disable torque, and requires a restart. Never treat the browser controls as an emergency stop; keep the physical power disconnect reachable.
+
+## Moving to another computer
+
+The preferred handoff is the native `RobotSorter` artifact for Windows, macOS, or Linux. Launch it, select the detected serial adapter in **Robot Setup**, run preflight, and test in dry-run mode. Docker is not required and can complicate direct USB access. Each physical arm/layout still needs its own recorded pickup and bin poses.
 
 ## Reflection Questions
 

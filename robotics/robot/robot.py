@@ -2,7 +2,10 @@ import time
 import numpy as np
 from typing import Union
 from enum import Enum, auto
-from robot.dynamixel import Dynamixel, OperatingMode, ReadAttribute
+try:
+    from .dynamixel import Dynamixel, OperatingMode, ReadAttribute
+except ImportError:  # Support legacy scripts launched from inside robotics/.
+    from robot.dynamixel import Dynamixel, OperatingMode, ReadAttribute
 from dynamixel_sdk import GroupSyncRead, GroupSyncWrite, DXL_LOBYTE, DXL_HIBYTE, DXL_LOWORD, DXL_HIWORD
 
 class MotorControlType(Enum):
@@ -156,7 +159,7 @@ class Robot:
 
         self.pos_writer.txPacket()
     
-    def set_and_wait_goal_pos(self, action, threshold=1, servo_id=None):
+    def set_and_wait_goal_pos(self, action, threshold=1, servo_id=None, timeout=15.0):
         """
         Sets the goal position and waits until the robot reaches the goal position.
         :param action: list or numpy array of target joint positions in range [0, 4096]
@@ -164,11 +167,17 @@ class Robot:
         :param servo_id: servo id to set the goal position if controlling only one servo
         """
         self.set_goal_pos(action, servo_id=servo_id)
+        started_at = time.monotonic()
         while True:
             time.sleep(0.1)
             vel = self.read_velocity()
             if np.all(np.abs(vel) <= threshold):
                 break
+            if timeout is not None and time.monotonic() - started_at >= timeout:
+                self._disable_torque()
+                raise TimeoutError(
+                    f"Robot did not settle within {timeout:.1f} seconds; torque was disabled."
+                )
 
     def set_pwm(self, action):
         """

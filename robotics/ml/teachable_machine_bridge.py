@@ -1,19 +1,39 @@
 import argparse
 import json
 import os
-import re
+import shutil
 import sys
+import threading
 import time
+import webbrowser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-ML_DIR = Path(__file__).resolve().parent
-DEFAULT_MAPPING_PATH = ML_DIR / "teachable_machine_actions.json"
-DEFAULT_CONFIG_PATH = BASE_DIR / "robotics" / "config.json"
-DEFAULT_ACTIONS_PATH = BASE_DIR / "robotics" / "actions.json"
+FROZEN = bool(getattr(sys, "frozen", False))
+BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
+ML_DIR = BASE_DIR / "robotics" / "ml" if FROZEN else Path(__file__).resolve().parent
+
+
+def user_config_dir():
+    if sys.platform == "win32":
+        root = Path(os.environ.get("APPDATA", Path.home()))
+        return root / "RobotSorter"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "RobotSorter"
+    return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "robot-sorter"
+
+
+if FROZEN:
+    RUNTIME_DIR = user_config_dir()
+    DEFAULT_MAPPING_PATH = RUNTIME_DIR / "teachable_machine_actions.json"
+    DEFAULT_CONFIG_PATH = RUNTIME_DIR / "config.json"
+    DEFAULT_ACTIONS_PATH = RUNTIME_DIR / "actions.json"
+else:
+    DEFAULT_MAPPING_PATH = ML_DIR / "teachable_machine_actions.json"
+    DEFAULT_CONFIG_PATH = BASE_DIR / "robotics" / "config.json"
+    DEFAULT_ACTIONS_PATH = BASE_DIR / "robotics" / "actions.json"
 POSE_SEQUENCE = ["hover", "pre-grasp", "grasp", "post-grasp"]
 REQUIRED_ARM_FIELDS = [
     "device_name",
@@ -24,8 +44,24 @@ REQUIRED_ARM_FIELDS = [
     "position_p_gain",
     "position_i_gain",
     "home_pos",
+    "sorting_calibrated",
 ]
 REQUIRED_LABELS = ["red object", "blue object", "empty", "unknown"]
+
+
+def prepare_runtime_files():
+    """Copy editable defaults out of a frozen application on first launch."""
+    if not FROZEN:
+        return
+    RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+    defaults = {
+        DEFAULT_MAPPING_PATH: ML_DIR / "teachable_machine_actions.json",
+        DEFAULT_CONFIG_PATH: ML_DIR / "default_config.json",
+        DEFAULT_ACTIONS_PATH: ML_DIR / "default_actions.json",
+    }
+    for destination, source in defaults.items():
+        if not destination.exists():
+            shutil.copy2(source, destination)
 
 
 class PreflightError(ValueError):
@@ -37,19 +73,35 @@ def load_json(path):
         return json.load(file)
 
 
-def device_exists(device_name):
-    """Check a serial-device name without assuming a particular operating system."""
-    if Path(device_name).exists():
-        return True
+def configured_device(path):
+    try:
+        return str(load_json(path).get("arm", {}).get("device_name", ""))
+    except (OSError, ValueError, AttributeError):
+        return ""
 
-    # Windows serial ports are names such as COM3, not filesystem paths.
-    if re.fullmatch(r"COM\\d+", str(device_name), flags=re.IGNORECASE):
-        try:
-            from serial.tools import list_ports
-        except ImportError:
-            return False
-        return any(port.device.lower() == device_name.lower() for port in list_ports.comports())
-    return False
+
+def list_serial_ports():
+    """Return serial ports in a platform-independent, JSON-friendly format."""
+    try:
+        from serial.tools import list_ports
+    except ImportError:
+        return []
+    return [
+        {
+            "device": port.device,
+            "description": port.description or "Serial device",
+            "manufacturer": port.manufacturer,
+            "vid": port.vid,
+            "pid": port.pid,
+        }
+        for port in list_ports.comports()
+    ]
+
+
+def device_exists(device_name):
+    """Check serial-device presence without assuming POSIX filesystem paths."""
+    wanted = str(device_name).casefold()
+    return any(port["device"].casefold() == wanted for port in list_serial_ports())
 
 
 class ActionRunner:
@@ -60,18 +112,31 @@ class ActionRunner:
         actions_path,
         execute=False,
         empty_rearm_frames=12,
+        min_confidence=0.85,
+        min_stable_frames=10,
+        motion_timeout=15.0,
     ):
         self.mapping_path = Path(mapping_path)
         self.config_path = Path(config_path)
         self.actions_path = Path(actions_path)
         self.execute = execute
         self.empty_rearm_frames = empty_rearm_frames
+        self.min_confidence = min_confidence
+        self.min_stable_frames = min_stable_frames
+        self.motion_timeout = motion_timeout
         self.mapping = load_json(self.mapping_path)
         self.robot = None
         self.arm_config = None
         self.actions = None
         self.armed = True
         self.last_sort_label = None
+        self.preflight_passed = False
+        self.fault = None
+        self._motion_lock = threading.Lock()
+
+    @property
+    def busy(self):
+        return self._motion_lock.locked()
 
     def preflight(self, check_device=True):
         """Validate files and pose references without initializing or moving the robot."""
@@ -90,6 +155,10 @@ class ActionRunner:
         if missing_fields:
             raise PreflightError(
                 f'{self.config_path} arm configuration is missing: {", ".join(missing_fields)}.'
+            )
+        if arm_config["sorting_calibrated"] is not True:
+            raise PreflightError(
+                "Sorting calibration is incomplete. Run RobotPoseRecorder for this arm and layout."
             )
 
         servo_ids = arm_config["servo_ids"]
@@ -117,8 +186,45 @@ class ActionRunner:
                 continue
             self._validate_mapping_entry(label, entry, actions, joint_count)
 
+        for field in ("min_position_limit", "max_position_limit"):
+            values = arm_config[field]
+            if not isinstance(values, list) or len(values) != joint_count:
+                raise PreflightError(f"arm.{field} must contain {joint_count} values.")
+
+        lower = arm_config["min_position_limit"]
+        upper = arm_config["max_position_limit"]
+        if any(low > high for low, high in zip(lower, upper)):
+            raise PreflightError("Each min_position_limit must be <= max_position_limit.")
+
+        positions_to_check = []
+        for label, entry in self.mapping.items():
+            if label.startswith("_") or not isinstance(entry, dict):
+                continue
+            if entry.get("action"):
+                action_name = entry["action"]
+                positions_to_check.extend(
+                    (action_name, pose, actions[action_name][pose]) for pose in POSE_SEQUENCE
+                )
+            for step in entry.get("sequence") or []:
+                positions_to_check.append(
+                    (step["action"], step["pose"], actions[step["action"]][step["pose"]])
+                )
+        for config_pose in ("home_pos", "rest_pos"):
+            if config_pose in arm_config:
+                positions_to_check.append(("config", config_pose, arm_config[config_pose]))
+
+        for action_name, pose_name, position in positions_to_check:
+            for index, (value, low, high) in enumerate(zip(position, lower, upper)):
+                if not low <= value <= high:
+                    raise PreflightError(
+                        f'Action "{action_name}" pose "{pose_name}" joint {index + 1} '
+                        f"is {value}, outside configured limits {low}..{high}."
+                    )
+
         self.arm_config = arm_config
         self.actions = actions
+        self.preflight_passed = True
+        self.fault = None
         return {
             "ok": True,
             "mapping": str(self.mapping_path),
@@ -201,19 +307,23 @@ class ActionRunner:
             position_p_gain=self.arm_config["position_p_gain"],
             position_i_gain=self.arm_config["position_i_gain"],
         )
-        self.robot.set_and_wait_goal_pos(self.arm_config["home_pos"])
+        self._move_to(self.arm_config["home_pos"])
 
-    def close(self):
+    def close(self, move_to_rest=True):
         if self.robot is None:
             return
         try:
-            if self.arm_config and "rest_pos" in self.arm_config:
-                self.robot.set_and_wait_goal_pos(self.arm_config["rest_pos"])
+            if move_to_rest and self.arm_config and "rest_pos" in self.arm_config:
+                self._move_to(self.arm_config["rest_pos"])
         finally:
             self.robot._disable_torque()
             self.robot = None
 
     def rearm(self, reason="operator"):
+        if self.busy:
+            return {"ok": False, "mode": "busy", "reason": "Robot motion is still in progress."}
+        if self.fault:
+            return {"ok": False, "mode": "fault", "reason": self.fault, "armed": False}
         self.armed = True
         self.last_sort_label = None
         return {"ok": True, "mode": "rearmed", "reason": reason, "armed": self.armed}
@@ -229,6 +339,24 @@ class ActionRunner:
         return {"action": None, "reason": "Mapping entry must be a string, object, or null."}
 
     def run(self, label, probability, stable_frames=0):
+        if self.fault:
+            return {"ok": False, "mode": "fault", "reason": self.fault, "armed": False}
+        if not 0 <= probability <= 1:
+            raise ValueError("probability must be between 0 and 1.")
+        if probability < self.min_confidence:
+            return {
+                "ok": True,
+                "mode": "rejected",
+                "reason": f"Confidence {probability:.2f} is below {self.min_confidence:.2f}.",
+                "armed": self.armed,
+            }
+        if stable_frames < self.min_stable_frames:
+            return {
+                "ok": True,
+                "mode": "rejected",
+                "reason": f"Only {stable_frames} stable frames; {self.min_stable_frames} required.",
+                "armed": self.armed,
+            }
         entry = self._mapping_for_label(label)
         action = entry.get("action")
         sequence = entry.get("sequence")
@@ -258,31 +386,39 @@ class ActionRunner:
                 "reason": "Sorting is latched after the previous sort. Show stable empty or use Re-arm.",
             }
 
-        # Latch before executing so an error cannot cause repeated movement requests.
-        self.armed = False
-        self.last_sort_label = label
-        if not self.execute:
-            return {
-                "ok": True,
-                "mode": "dry_run",
-                "label": label,
-                "probability": probability,
-                "mapped": entry,
-                "armed": False,
-                "message": "Dry run only. Start bridge with --execute to move the robot.",
-            }
+        if not self._motion_lock.acquire(blocking=False):
+            return {"ok": False, "mode": "busy", "reason": "Robot motion is already in progress."}
 
         try:
+            # Latch before executing so an error cannot cause repeated movement requests.
+            self.armed = False
+            self.last_sort_label = label
+            if not self.execute:
+                return {
+                    "ok": True,
+                    "mode": "dry_run",
+                    "label": label,
+                    "probability": probability,
+                    "mapped": entry,
+                    "armed": False,
+                    "message": "Dry run only. Start bridge with --execute to move the robot.",
+                }
+            if not self.preflight_passed:
+                raise PreflightError("Physical execution requires a successful preflight in this session.")
             self._ensure_robot()
             if sequence:
                 self._run_sequence(sequence)
             else:
                 self._run_action(action)
             if self.arm_config and "home_pos" in self.arm_config:
-                self.robot.set_and_wait_goal_pos(self.arm_config["home_pos"])
-        except Exception:
-            self.close()
+                self._move_to(self.arm_config["home_pos"])
+        except Exception as error:
+            self.fault = str(error)
+            self.armed = False
+            self.close(move_to_rest=False)
             raise
+        finally:
+            self._motion_lock.release()
 
         return {
             "ok": True,
@@ -295,28 +431,21 @@ class ActionRunner:
 
     def _run_action(self, action_name):
         for pose in POSE_SEQUENCE:
-            self.robot.set_and_wait_goal_pos(self.actions[action_name][pose])
+            self._move_to(self.actions[action_name][pose])
             time.sleep(0.25)
 
     def _run_sequence(self, sequence):
         for step in sequence:
             delay = float(step.get("delay", 0.25))
-            self.robot.set_and_wait_goal_pos(self.actions[step["action"]][step["pose"]])
+            self._move_to(self.actions[step["action"]][step["pose"]])
             time.sleep(delay)
+
+    def _move_to(self, position):
+        self.robot.set_and_wait_goal_pos(position, timeout=self.motion_timeout)
 
 
 def make_handler(runner, args):
     class BridgeHandler(SimpleHTTPRequestHandler):
-        def end_headers(self):
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type")
-            super().end_headers()
-
-        def do_OPTIONS(self):
-            self.send_response(204)
-            self.end_headers()
-
         def do_GET(self):
             parsed = urlparse(self.path)
             if parsed.path == "/health":
@@ -325,9 +454,19 @@ def make_handler(runner, args):
                     "execute": args.execute,
                     "armed": runner.armed,
                     "empty_rearm_frames": args.empty_rearm_frames,
+                    "min_confidence": args.min_confidence,
+                    "min_stable_frames": args.min_stable_frames,
+                    "busy": runner.busy,
+                    "preflight_passed": runner.preflight_passed,
+                    "fault": runner.fault,
+                    "bundled_model": (ML_DIR / "assets" / "model" / "model.json").exists(),
+                    "device": configured_device(args.config),
                     "mapping": str(args.mapping),
                     "actions": str(args.actions),
                 })
+                return
+            if parsed.path == "/ports":
+                self._send_json({"ok": True, "ports": list_serial_ports()})
                 return
             if parsed.path in ["/", "/index.html"]:
                 self._send_file(ML_DIR / "teachable_machine_demo.html", "text/html")
@@ -344,14 +483,25 @@ def make_handler(runner, args):
         def do_POST(self):
             parsed = urlparse(self.path)
             try:
+                content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+                if content_type != "application/json":
+                    raise ValueError("POST requests require Content-Type: application/json.")
                 if parsed.path == "/rearm":
                     self._send_json(runner.rearm())
+                    return
+                if parsed.path == "/preflight":
+                    self._send_json(runner.preflight(check_device=True))
+                    return
+                if parsed.path == "/config/device":
+                    self._update_device()
                     return
                 if parsed.path != "/prediction":
                     self.send_error(404, "Unknown endpoint")
                     return
 
                 content_length = int(self.headers.get("Content-Length", "0"))
+                if content_length > 1_000_000:
+                    raise ValueError("Request body is too large.")
                 payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
                 label = payload["className"]
                 probability = float(payload["probability"])
@@ -362,6 +512,28 @@ def make_handler(runner, args):
             except Exception as exc:
                 self._send_json({"ok": False, "error": str(exc)}, status=400)
                 print(f"[error] {exc}")
+
+        def _update_device(self):
+            if runner.busy or runner.robot is not None:
+                raise RuntimeError("Cannot change the serial device while the robot is connected or moving.")
+            content_length = int(self.headers.get("Content-Length", "0"))
+            payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
+            device = str(payload.get("device", "")).strip()
+            available = {port["device"] for port in list_serial_ports()}
+            if device not in available:
+                raise ValueError(f"Serial device is not currently available: {device}")
+            config = load_json(args.config)
+            config["arm"]["device_name"] = device
+            timestamp = time.strftime("%Y%m%d-%H%M%S")
+            backup = args.config.with_name(
+                f"{args.config.stem}.{timestamp}.backup{args.config.suffix}"
+            )
+            backup.write_text(args.config.read_text())
+            args.config.write_text(json.dumps(config, indent=2) + "\n")
+            runner.arm_config = None
+            runner.actions = None
+            runner.preflight_passed = False
+            self._send_json({"ok": True, "device": device, "backup": str(backup)})
 
         def _send_json(self, data, status=200):
             body = json.dumps(data, indent=2).encode("utf-8")
@@ -402,6 +574,14 @@ def parse_args():
         action="store_true",
         help="Validate config, serial device, mapping, and poses without initializing or moving the arm.",
     )
+    parser.add_argument("--min-confidence", type=float, default=0.85)
+    parser.add_argument("--min-stable-frames", type=int, default=10)
+    parser.add_argument("--motion-timeout", type=float, default=15.0)
+    parser.add_argument(
+        "--open-browser",
+        action="store_true",
+        help="Open the local control page after the bridge starts.",
+    )
     parser.add_argument(
         "--skip-device-check",
         action="store_true",
@@ -417,9 +597,16 @@ def parse_args():
 
 
 def main():
+    prepare_runtime_files()
     args = parse_args()
     if args.empty_rearm_frames < 1:
         raise SystemExit("--empty-rearm-frames must be at least 1.")
+    if not 0 <= args.min_confidence <= 1:
+        raise SystemExit("--min-confidence must be between 0 and 1.")
+    if args.min_stable_frames < 1:
+        raise SystemExit("--min-stable-frames must be at least 1.")
+    if args.motion_timeout <= 0:
+        raise SystemExit("--motion-timeout must be greater than zero.")
 
     runner = ActionRunner(
         args.mapping,
@@ -427,6 +614,9 @@ def main():
         args.actions,
         execute=args.execute,
         empty_rearm_frames=args.empty_rearm_frames,
+        min_confidence=args.min_confidence,
+        min_stable_frames=args.min_stable_frames,
+        motion_timeout=args.motion_timeout,
     )
     if args.preflight or args.execute:
         try:
@@ -444,6 +634,8 @@ def main():
     print(f"Teachable Machine bridge running in {mode} mode.", flush=True)
     print(f"Open http://{args.host}:{args.port}/", flush=True)
     print("Press Control-C to stop.", flush=True)
+    if args.open_browser or FROZEN:
+        threading.Timer(0.5, webbrowser.open, args=(f"http://{args.host}:{args.port}/",)).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:

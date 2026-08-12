@@ -1,7 +1,6 @@
 from __future__ import annotations
-import glob
 import math
-import os
+from serial.tools import list_ports
 from dynamixel_sdk import *
 from dataclasses import dataclass
 import enum
@@ -52,16 +51,7 @@ class Dynamixel:
         self.connect()
 
     def _available_ports(self):
-        patterns = [
-            '/dev/cu.usbmodem*',
-            '/dev/cu.usbserial*',
-            '/dev/ttyUSB*',
-            '/dev/ttyACM*',
-        ]
-        ports = []
-        for pattern in patterns:
-            ports.extend(glob.glob(pattern))
-        return sorted(set(ports))
+        return sorted({port.device for port in list_ports.comports()})
 
     def connect(self):
         if self.config.device_name == '':
@@ -76,7 +66,7 @@ class Dynamixel:
                     'Multiple Dynamixel USB serial devices found; set device_name in config.json to one of: '
                     + ', '.join(available_ports)
                 )
-        elif not os.path.exists(self.config.device_name):
+        elif self.config.device_name not in self._available_ports():
             available_ports = self._available_ports()
             if len(available_ports) == 1:
                 configured_device = self.config.device_name
