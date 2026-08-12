@@ -1,7 +1,8 @@
 #!/bin/sh
 python3 -m venv env
 
-echo 'export PYTHONPATH="$PYTHONPATH:/home/ttic/Desktop/hs-robotic-manipulation-course"' >> env/bin/activate
+PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
+echo "export PYTHONPATH=\"\$PYTHONPATH:$PROJECT_ROOT\"" >> env/bin/activate
 
 . env/bin/activate
 

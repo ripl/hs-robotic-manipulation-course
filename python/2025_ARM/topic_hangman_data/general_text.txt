@@ -1,0 +1,8 @@
+The class is learning how a computer can use data to make better guesses.
+Students collect text, count letters, and turn the counts into probabilities.
+A general page has many ordinary English words. It usually teaches the computer
+that e, t, a, o, i, n, s, and r are common letters. The first version of the
+Hangman player guesses letters in that learned order.
+
+This file is only starter data. Replace it by scraping a public web page, or
+paste in a longer article that is not about your final Hangman topic.

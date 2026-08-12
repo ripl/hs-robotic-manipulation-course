@@ -11,7 +11,7 @@ __pycache__/
 build/
 develop-eggs/
 dist/
-downloads/
+/downloads/
 eggs/
 .eggs/
 lib/
@@ -124,6 +124,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.docs-venv/
 env/
 venv/
 ENV/
@@ -161,4 +162,5 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+.DS_Store
 robotics/actions.json

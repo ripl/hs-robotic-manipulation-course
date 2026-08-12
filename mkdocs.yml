@@ -1,0 +1,77 @@
+site_name: ARM Course
+site_description: A six-week high school robotics curriculum from TTIC and RIPL.
+site_url: https://arm.ttic.edu/
+repo_url: https://github.com/ripl/arm-course
+repo_name: ripl/arm-course
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  custom_dir: overrides
+  language: en
+  logo: assets/images/ttic-logo.png
+  favicon: assets/images/ttic-logo-square.jpg
+  features:
+    - navigation.sections
+    - navigation.tabs
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+  palette:
+    scheme: default
+    primary: blue
+    accent: blue
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Course Guide: course-guide.md
+  - Setup: setup.md
+  - Equipment: equipment.md
+  - Modules:
+      - Module Map: modules/index.md
+      - Python Foundations:
+          - Python Sequence: modules/python/index.md
+          - Introduction to Python: modules/python/introduction-to-python.md
+          - Guess My Number: modules/python/guess-my-number.md
+          - Pig: modules/python/pig.md
+          - Rock Paper Scissors: modules/python/rock-paper-scissors.md
+          - Tic-Tac-Toe: modules/python/tic-tac-toe.md
+          - Hangman: modules/python/hangman.md
+          - Hangman Topic Frequency: modules/python/hangman-topic-frequency.md
+          - Quiz Games: modules/python/quizzes.md
+      - Graphics and Games:
+          - Graphics Sequence: modules/graphics/pygame.md
+          - Pop the Balloon: modules/graphics/pop-the-balloon.md
+          - Race for the Treasure: modules/graphics/race-for-the-treasure.md
+          - Attack of the Clones: modules/graphics/attack-of-the-clones.md
+          - Tic-Tac-Toe GUI: modules/graphics/tic-tac-toe-gui.md
+          - Connect Four: modules/graphics/connect-four.md
+      - Robot Arm and Vision:
+          - Robot Arm Sequence: modules/robot-arm/index.md
+          - Motor Setup and Control: modules/robot-arm/motor-control.md
+          - Vision and Game Integration: modules/robot-arm/vision-game.md
+          - Teachable Machine Object Sorting: modules/robot-arm/teachable-machine-sorting.md
+  - Teacher Materials:
+      - Teaching Model: teacher/teaching-model.md
+      - Module Template: teacher/module-template.md
+      - Teachable Machine Guide: teacher/teachable-machine-guide.md
+      - Local Preview: teacher/local-preview.md
+      - Publication Checklist: teacher/publication-checklist.md
+  - Resources: resources.md

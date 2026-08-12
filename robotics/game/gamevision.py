@@ -1,4 +1,6 @@
 import pygame
+import argparse
+import os
 from game import TicTacToe
 from players import Player, Arm, SmartArm
 import sys
@@ -261,9 +263,21 @@ class TicTacToeUI:
             #vision.wait_for_move()
             self.clock.tick(60)  # Frames per second
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--camera",
+        type=int,
+        default=int(os.environ.get("ROBOTICS_CAMERA_INDEX", 0)),
+        help="OpenCV camera index. Defaults to ROBOTICS_CAMERA_INDEX or 0.",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
+    args = parse_args()
+    vision = BoardVision(False, args.camera)
     p1, p2 = Player('x'), SmartArm('o', lvl=2)
-    vision = BoardVision(False, 4)
     game = TicTacToe(p1, p2)
 
     game = TicTacToeUI(game)

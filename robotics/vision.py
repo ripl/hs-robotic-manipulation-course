@@ -7,7 +7,7 @@ class BoardVision:
     """
     Automatically detects the TicTacToe board state using a camera!
     """
-    def __init__(self,main=False,cam=4):
+    def __init__(self, main=False, cam=0):
         """
         No need to change anything!
         """
@@ -22,12 +22,18 @@ class BoardVision:
         self.confidence = 0
         self.confidence_threshold = 100
         self.main = main
+        self.latest_frame = None
+        self.camera_error = None
+        self.camera_thread = None
         self.cap = cv2.VideoCapture(cam) #Tune this number until you get the USB camera!
+        if not self.cap.isOpened():
+            raise RuntimeError(f"Could not open camera index {cam}. Try another index, such as 0, 1, 2, 3, or 4.")
         if main:
             self.cap_board_state()
-        self.camera_thread = threading.Thread(target=self.cap_board_state)
-        self.camera_thread.daemon = True
-        self.camera_thread.start()
+        else:
+            self.camera_thread = threading.Thread(target=self.cap_board_state)
+            self.camera_thread.daemon = True
+            self.camera_thread.start()
 
 
 
@@ -143,6 +149,8 @@ class BoardVision:
         No changes needed!
         """
         while self.confidence < self.confidence_threshold:
+            if self.camera_error is not None:
+                raise RuntimeError(self.camera_error)
             time.sleep(0.05)
         return self.true_board_state
     
@@ -200,9 +208,11 @@ class BoardVision:
         while True:
             ret, frame = cap.read()
             if not ret:
+                self.camera_error = "Camera stopped returning frames. Check the camera index, permissions, and USB connection."
                 break
 
             if ret:
+                frame = cv2.flip(frame, -1)
                 height, width = frame.shape[:2]
 
                 # Calculate cropping coordinates for 50% zoom
@@ -256,6 +266,7 @@ class BoardVision:
                 cv2.imshow("Camera View", frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
+            self.latest_frame = frame
         cap.release()
         cv2.destroyAllWindows()
 

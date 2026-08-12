@@ -1,0 +1,8 @@
+# Add class titles here, one movie per line.
+# Titles do not have to be in movie_titles.txt.
+# If a title is missing from the training file, autocomplete may get confused.
+robot dreams
+the iron giant
+real steel
+spare parts
+big hero six

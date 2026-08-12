@@ -3,6 +3,9 @@ import random
 from robotics.robot.robot import Robot
 from players import Player
 
+GRIPPER_SERVO_INDEX = -1
+PRE_GRASP_GRIPPER_NARROWING = 300
+
 
 class Arm(Player):
     """
@@ -67,6 +70,24 @@ class Arm(Player):
 
     def __repr__(self):
         return f'ArmPlayer {self.count} is "{self.piece}"'
+
+    def _arm_config(self):
+        if self.piece == 'x':
+            return self.arm_config_1
+        return self.arm_config_2
+
+    def _pose_for_move(self, position, pose):
+        target = self.positions[position][pose]
+        if pose != 'pre-grasp':
+            return target
+
+        target = target.copy()
+        min_gripper_pos = self._arm_config()['min_position_limit'][GRIPPER_SERVO_INDEX]
+        target[GRIPPER_SERVO_INDEX] = max(
+            min_gripper_pos,
+            target[GRIPPER_SERVO_INDEX] - PRE_GRASP_GRIPPER_NARROWING,
+        )
+        return target
     
     def move_piece(self, start, end,clean=False):
         """
@@ -87,10 +108,10 @@ class Arm(Player):
         valid_poses = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
 
         for pose in valid_poses:
-            self.arm.set_and_wait_goal_pos(self.positions[start][pose])
+            self.arm.set_and_wait_goal_pos(self._pose_for_move(start, pose))
 
         for pose in reversed(valid_poses):
-            self.arm.set_and_wait_goal_pos(self.positions[end][pose])
+            self.arm.set_and_wait_goal_pos(self._pose_for_move(end, pose))
 
         self.arm.set_and_wait_goal_pos([2048, 1800, 1850, 1100, 2048, 2048])
 

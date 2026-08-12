@@ -1,0 +1,18 @@
+Geography studies maps, continents, oceans, regions, climates, coasts, islands,
+and locations. This starter topic is about continents and oceans.
+
+Antarctica and the Antarctic region are cold. The Arctic Ocean is near the north
+pole. The Atlantic Ocean and the Indian Ocean are major oceans. Oceania is a
+region with many islands. A continent is a very large area of land. An ocean is a
+very large body of water.
+
+Topic answer words: Antarctica, Arctic Ocean, Atlantic, Indian Ocean, Oceania,
+Continent, Ocean, Antarctic.
+
+The topic words repeat so the computer can learn this class theme: Antarctica
+Arctic Ocean Atlantic Indian Ocean Oceania Continent Ocean Antarctic. Antarctica
+Arctic Ocean Atlantic Indian Ocean Oceania Continent Ocean Antarctic.
+
+This file is starter data for a geography Hangman topic. Replace it with text
+from a topic that your class chooses, such as a movie, game, sport, book series,
+place, historical period, or science topic.

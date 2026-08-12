@@ -2,6 +2,21 @@ import json
 import random
 from robotics.robot.robot import Robot
 
+BOARD_POSITION_MAP = {
+    '0': '0',
+    '1': '1',
+    '2': '2',
+    '3': '3',
+    '4': '4',
+    '5': '5',
+    '6': '6',
+    '7': '7',
+    '8': '8',
+}
+
+GRIPPER_SERVO_INDEX = -1
+PRE_GRASP_GRIPPER_NARROWING = 200
+
 class Player:
     """
     Represents a player in a TicTacToe instance.
@@ -92,8 +107,21 @@ class Arm(Player):
 
     def __repr__(self):
         return f'ArmPlayer {self.count} is "{self.piece}"'
+
+    def _pose_for_move(self, position, pose):
+        target = self.positions[position][pose]
+        if pose != 'pre-grasp':
+            return target
+
+        target = target.copy()
+        min_gripper_pos = self.arm_config['min_position_limit'][GRIPPER_SERVO_INDEX]
+        target[GRIPPER_SERVO_INDEX] = max(
+            min_gripper_pos,
+            target[GRIPPER_SERVO_INDEX] - PRE_GRASP_GRIPPER_NARROWING,
+        )
+        return target
     
-    def move_piece(self, start, end):
+    def move_piece(self, start, end, clean=False):
         """
         Move a piece from start to end position on the physical board.
 
@@ -103,13 +131,19 @@ class Arm(Player):
         :param start: The start position on the physical board.
         :param end: The end position on the physical board.
         """
+        if self.piece == 'o' and not clean:
+            end = BOARD_POSITION_MAP[end]
+
+        if self.piece == 'o' and clean:
+            start = BOARD_POSITION_MAP[start]
+
         valid_poses = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
 
         for pose in valid_poses:
-            self.arm.set_and_wait_goal_pos(self.positions[start][pose])
+            self.arm.set_and_wait_goal_pos(self._pose_for_move(start, pose))
 
         for pose in reversed(valid_poses):
-            self.arm.set_and_wait_goal_pos(self.positions[end][pose])
+            self.arm.set_and_wait_goal_pos(self._pose_for_move(end, pose))
 
         self.arm.set_and_wait_goal_pos(self.arm_config["home_pos"])
 
@@ -124,7 +158,7 @@ class Arm(Player):
         """
         for space in range(len(curr_board)):
             if curr_board[space] == self.piece:
-                self.move_piece(str(space), self.used_pieces.pop())
+                self.move_piece(str(space), self.used_pieces.pop(), True)
 
 class SmartArm(Arm):
     """

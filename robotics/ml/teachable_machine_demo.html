@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teachable Machine Robot Bridge</title>
+  <style>
+    :root {
+      --blue: #006eb6;
+      --blue-dark: #00548a;
+      --gray-900: #333;
+      --gray-700: #555;
+      --gray-200: #e5e7eb;
+      --gray-100: #f7f8fa;
+      --good: #0f8a5f;
+      --warn: #b45309;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--gray-900);
+      font-family: "Open Sans", Arial, sans-serif;
+      background: #fff;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 2px solid var(--gray-200);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(280px, 520px) minmax(280px, 1fr);
+      gap: 1.25rem;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 1.25rem;
+    }
+
+    section {
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 1rem;
+    }
+
+    h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1rem;
+    }
+
+    label {
+      display: block;
+      margin: 0.8rem 0 0.25rem;
+      color: var(--gray-700);
+      font-size: 0.86rem;
+      font-weight: 700;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      color: var(--gray-900);
+      font: inherit;
+    }
+
+    button {
+      margin-top: 1rem;
+      padding: 0.55rem 0.85rem;
+      border: 1px solid var(--blue);
+      border-radius: 4px;
+      color: #fff;
+      background: var(--blue);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      color: var(--blue);
+      background: #fff;
+    }
+
+    button:hover {
+      border-color: var(--blue-dark);
+      background: var(--blue-dark);
+    }
+
+    button.secondary:hover {
+      color: #fff;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .checkbox {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.85rem;
+      font-weight: 700;
+    }
+
+    .checkbox input {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    #webcam-container canvas,
+    #webcam-container video {
+      width: 100%;
+      max-width: 460px;
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      background: var(--gray-100);
+    }
+
+    .prediction {
+      display: grid;
+      grid-template-columns: 10rem 1fr 3.5rem;
+      gap: 0.55rem;
+      align-items: center;
+      margin: 0.4rem 0;
+      font-size: 0.9rem;
+    }
+
+    .bar {
+      height: 0.8rem;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--gray-200);
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      background: var(--blue);
+    }
+
+    .status {
+      margin-top: 0.8rem;
+      padding: 0.65rem;
+      border-radius: 4px;
+      background: var(--gray-100);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.84rem;
+      white-space: pre-wrap;
+    }
+
+    .stable {
+      color: var(--good);
+      font-weight: 700;
+    }
+
+    .waiting {
+      color: var(--warn);
+      font-weight: 700;
+    }
+
+    @media (max-width: 780px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Teachable Machine Robot Bridge</h1>
+    <span id="server-status">Checking server...</span>
+  </header>
+
+  <main>
+    <section>
+      <h2>Model and Safety Settings</h2>
+
+      <label for="model-url">Teachable Machine model URL</label>
+      <input id="model-url" type="text" placeholder="https://teachablemachine.withgoogle.com/models/MODEL_ID/">
+
+      <div class="row">
+        <div>
+          <label for="threshold">Confidence threshold</label>
+          <input id="threshold" type="number" min="0" max="1" step="0.01" value="0.85">
+        </div>
+        <div>
+          <label for="stable-frames">Stable frames</label>
+          <input id="stable-frames" type="number" min="1" max="60" step="1" value="12">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="cooldown-ms">Send cooldown, ms</label>
+          <input id="cooldown-ms" type="number" min="0" step="100" value="2500">
+        </div>
+        <div>
+          <label for="server-url">Prediction endpoint</label>
+          <input id="server-url" type="text" value="/prediction">
+        </div>
+      </div>
+
+      <label class="checkbox">
+        <input id="send-enabled" type="checkbox">
+        Send stable predictions to Python
+      </label>
+
+      <button id="start-button">Start Camera and Model</button>
+      <button id="stop-button" class="secondary">Stop Sending</button>
+      <button id="rearm-button" class="secondary">Re-arm Sorting</button>
+
+      <div class="status" id="status">Paste a model URL, then press Start.</div>
+    </section>
+
+    <section>
+      <h2>Camera</h2>
+      <div id="webcam-container"></div>
+      <div class="status" id="stable-status">No model running.</div>
+    </section>
+
+    <section>
+      <h2>Predictions</h2>
+      <div id="label-container"></div>
+    </section>
+
+    <section>
+      <h2>Last Message to Python</h2>
+      <div class="status" id="last-message">Nothing sent yet.</div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.3/dist/teachablemachine-image.min.js"></script>
+  <script>
+    const modelUrlInput = document.getElementById("model-url");
+    const thresholdInput = document.getElementById("threshold");
+    const stableFramesInput = document.getElementById("stable-frames");
+    const cooldownInput = document.getElementById("cooldown-ms");
+    const serverUrlInput = document.getElementById("server-url");
+    const sendEnabledInput = document.getElementById("send-enabled");
+    const statusBox = document.getElementById("status");
+    const stableStatus = document.getElementById("stable-status");
+    const lastMessage = document.getElementById("last-message");
+    const labelContainer = document.getElementById("label-container");
+    const serverStatus = document.getElementById("server-status");
+    const webcamContainer = document.getElementById("webcam-container");
+
+    let model = null;
+    let webcam = null;
+    let running = false;
+    let lastTopClass = null;
+    let stableCount = 0;
+    let lastSentAt = 0;
+
+    modelUrlInput.value = localStorage.getItem("tm-model-url") || "";
+
+    async function checkServer() {
+      try {
+        const response = await fetch("/health");
+        const health = await response.json();
+        const mode = health.execute ? "execute mode" : "dry run";
+        const armed = health.armed ? "armed" : "latched; show empty or re-arm";
+        serverStatus.textContent = `Server: ${mode}; ${armed}`;
+      } catch (error) {
+        serverStatus.textContent = "Server: unavailable";
+      }
+    }
+
+    function normalizeModelUrl(url) {
+      const trimmed = url.trim();
+      if (!trimmed) {
+        throw new Error("Model URL is required.");
+      }
+      return trimmed.endsWith("/") ? trimmed : trimmed + "/";
+    }
+
+    async function start() {
+      try {
+        const baseUrl = normalizeModelUrl(modelUrlInput.value);
+        localStorage.setItem("tm-model-url", baseUrl);
+        statusBox.textContent = "Loading model...";
+
+        model = await tmImage.load(baseUrl + "model.json", baseUrl + "metadata.json");
+        webcam = new tmImage.Webcam(320, 320, true);
+        await webcam.setup();
+        await webcam.play();
+
+        webcamContainer.innerHTML = "";
+        webcamContainer.appendChild(webcam.canvas);
+        labelContainer.innerHTML = "";
+
+        for (let i = 0; i < model.getTotalClasses(); i++) {
+          const row = document.createElement("div");
+          row.className = "prediction";
+          row.innerHTML = "<span></span><div class='bar'><span></span></div><strong></strong>";
+          labelContainer.appendChild(row);
+        }
+
+        running = true;
+        statusBox.textContent = "Model running. Enable sending when the predictions look stable.";
+        window.requestAnimationFrame(loop);
+      } catch (error) {
+        statusBox.textContent = "Error: " + error.message;
+      }
+    }
+
+    async function loop() {
+      if (!running || !webcam || !model) {
+        return;
+      }
+      webcam.update();
+      await predict();
+      window.requestAnimationFrame(loop);
+    }
+
+    async function predict() {
+      const predictions = await model.predict(webcam.canvas);
+      predictions.sort((a, b) => b.probability - a.probability);
+
+      predictions.forEach((prediction, index) => {
+        const row = labelContainer.children[index];
+        row.children[0].textContent = prediction.className;
+        row.children[1].firstElementChild.style.width = Math.round(prediction.probability * 100) + "%";
+        row.children[2].textContent = prediction.probability.toFixed(2);
+      });
+
+      const top = predictions[0];
+      if (top.className === lastTopClass) {
+        stableCount += 1;
+      } else {
+        lastTopClass = top.className;
+        stableCount = 1;
+      }
+
+      const threshold = Number(thresholdInput.value);
+      const requiredStableFrames = Number(stableFramesInput.value);
+      const isStable = top.probability >= threshold && stableCount >= requiredStableFrames;
+      stableStatus.innerHTML = isStable
+        ? `<span class="stable">Stable:</span> ${top.className} (${top.probability.toFixed(2)}, ${stableCount} frames)`
+        : `<span class="waiting">Waiting:</span> ${top.className} (${top.probability.toFixed(2)}, ${stableCount}/${requiredStableFrames} frames)`;
+
+      if (isStable && sendEnabledInput.checked) {
+        await maybeSendPrediction(top, predictions);
+      }
+    }
+
+    async function maybeSendPrediction(top, predictions) {
+      const now = Date.now();
+      const cooldownMs = Number(cooldownInput.value);
+      if (now - lastSentAt < cooldownMs) {
+        return;
+      }
+      lastSentAt = now;
+
+      const payload = {
+        className: top.className,
+        probability: top.probability,
+        stableFrames: stableCount,
+        allPredictions: predictions.map((p) => ({
+          className: p.className,
+          probability: p.probability
+        }))
+      };
+
+      try {
+        const response = await fetch(serverUrlInput.value, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        lastMessage.textContent = JSON.stringify(result, null, 2);
+        if (result.mode === "suppressed") {
+          statusBox.textContent = "Sorting is latched. Show a stable empty pickup area or press Re-arm Sorting.";
+        } else if (result.rearmed) {
+          statusBox.textContent = "Sorting re-armed after a stable empty pickup area.";
+        }
+        checkServer();
+      } catch (error) {
+        lastMessage.textContent = "Send failed: " + error.message;
+      }
+    }
+
+    document.getElementById("start-button").addEventListener("click", start);
+    document.getElementById("stop-button").addEventListener("click", () => {
+      sendEnabledInput.checked = false;
+      lastMessage.textContent = "Sending disabled.";
+    });
+    document.getElementById("rearm-button").addEventListener("click", async () => {
+      try {
+        const response = await fetch("/rearm", {method: "POST"});
+        const result = await response.json();
+        lastMessage.textContent = JSON.stringify(result, null, 2);
+        statusBox.textContent = "Sorting re-armed. Clear the pickup area before enabling sending.";
+        checkServer();
+      } catch (error) {
+        lastMessage.textContent = "Re-arm failed: " + error.message;
+      }
+    });
+
+    checkServer();
+  </script>
+</body>
+</html>

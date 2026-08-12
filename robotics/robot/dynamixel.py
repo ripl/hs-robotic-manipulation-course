@@ -1,4 +1,5 @@
 from __future__ import annotations
+import glob
 import math
 import os
 from dynamixel_sdk import *
@@ -50,17 +51,56 @@ class Dynamixel:
         self.config = config
         self.connect()
 
+    def _available_ports(self):
+        patterns = [
+            '/dev/cu.usbmodem*',
+            '/dev/cu.usbserial*',
+            '/dev/ttyUSB*',
+            '/dev/ttyACM*',
+        ]
+        ports = []
+        for pattern in patterns:
+            ports.extend(glob.glob(pattern))
+        return sorted(set(ports))
+
     def connect(self):
         if self.config.device_name == '':
-            for port_name in os.listdir('/dev'):
-                if 'ttyUSB' in port_name or 'ttyACM' in port_name:
-                    self.config.device_name = '/dev/' + port_name
-                    print(f'using device {self.config.device_name}')
+            available_ports = self._available_ports()
+            if len(available_ports) == 1:
+                self.config.device_name = available_ports[0]
+                print(f'using device {self.config.device_name}')
+            elif len(available_ports) == 0:
+                raise FileNotFoundError('No Dynamixel USB serial devices found in /dev.')
+            else:
+                raise RuntimeError(
+                    'Multiple Dynamixel USB serial devices found; set device_name in config.json to one of: '
+                    + ', '.join(available_ports)
+                )
+        elif not os.path.exists(self.config.device_name):
+            available_ports = self._available_ports()
+            if len(available_ports) == 1:
+                configured_device = self.config.device_name
+                self.config.device_name = available_ports[0]
+                print(f'configured device {configured_device} not found; using device {self.config.device_name}')
+            else:
+                available_text = ', '.join(available_ports) if available_ports else 'none'
+                raise FileNotFoundError(
+                    f'Dynamixel device not found: {self.config.device_name}. '
+                    f'Available USB serial devices: {available_text}. '
+                    'Reconnect the USB adapter or update device_name in config.json.'
+                )
         self.portHandler = PortHandler(self.config.device_name)
         # self.portHandler.LA
         self.packetHandler = PacketHandler(self.config.protocol_version)
-        if not self.portHandler.openPort():
-            raise Exception(f'Failed to open port {self.config.device_name}')
+        try:
+            port_opened = self.portHandler.openPort()
+        except Exception as exc:
+            raise ConnectionError(
+                f'Failed to open port {self.config.device_name}: {exc}. '
+                'Close any other serial monitor/process using the USB adapter, or unplug and reconnect it.'
+            ) from exc
+        if not port_opened:
+            raise ConnectionError(f'Failed to open port {self.config.device_name}')
 
         if not self.portHandler.setBaudRate(self.config.baudrate):
             raise Exception(f'failed to set baudrate to {self.config.baudrate}')
@@ -75,6 +115,17 @@ class Dynamixel:
 
     def disconnect(self):
         self.portHandler.closePort()
+
+    def scan_ids(self, motor_ids):
+        present_ids = []
+        missing_ids = []
+        for motor_id in motor_ids:
+            _, dxl_comm_result, dxl_error = self.packetHandler.ping(self.portHandler, motor_id)
+            if dxl_comm_result == COMM_SUCCESS and dxl_error == 0:
+                present_ids.append(motor_id)
+            else:
+                missing_ids.append(motor_id)
+        return present_ids, missing_ids
 
     def set_goal_position(self, motor_id, goal_position):
         # if self.operating_modes[motor_id] is not OperatingMode.POSITION:
@@ -190,7 +241,7 @@ class Dynamixel:
                 f"dynamixel error for motor {motor_id}: {self.packetHandler.getTxRxResult(dxl_error)}")
 
     def set_operating_mode(self, motor_id: int, operating_mode: OperatingMode):
-        dxl_comm_result, dxl_error = self.packetHandler.write2ByteTxRx(self.portHandler, motor_id,
+        dxl_comm_result, dxl_error = self.packetHandler.write1ByteTxRx(self.portHandler, motor_id,
                                                                        self.OPERATING_MODE_ADDR, operating_mode.value)
         self._process_response(dxl_comm_result, dxl_error, motor_id)
         self.operating_modes[motor_id] = operating_mode

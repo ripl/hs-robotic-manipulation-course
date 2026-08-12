@@ -70,6 +70,14 @@ class Robot:
             2)
         for id in self.servo_ids:
             self.pwm_writer.addParam(id, [2048])
+        present_ids, missing_ids = self.dynamixel.scan_ids(self.servo_ids)
+        if missing_ids:
+            present_text = present_ids if present_ids else 'none'
+            raise ConnectionError(
+                f'No response from Dynamixel servo IDs {missing_ids} on {self.dynamixel.config.device_name}. '
+                f'Responding configured IDs: {present_text}. '
+                'Check servo power, daisy-chain cables, USB adapter, baudrate, and configured servo IDs.'
+            )
         self._disable_torque()
 
         self.motor_control_state = MotorControlType.DISABLED

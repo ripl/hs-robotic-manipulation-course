@@ -1,0 +1,41 @@
+{
+  "_notes": [
+    "Class labels must match the labels used in Teachable Machine.",
+    "Dry-run mode prints the mapped action without moving the robot.",
+    "Use null for classes that should never move the robot."
+  ],
+  "red object": {
+    "sequence": [
+      {"action": "pickup", "pose": "hover"},
+      {"action": "pickup", "pose": "pre-grasp"},
+      {"action": "pickup", "pose": "grasp"},
+      {"action": "pickup", "pose": "post-grasp"},
+      {"action": "red_bin", "pose": "post-grasp"},
+      {"action": "red_bin", "pose": "grasp"},
+      {"action": "red_bin", "pose": "pre-grasp"},
+      {"action": "red_bin", "pose": "hover"}
+    ],
+    "description": "Pick the fixed pickup object and place it in the red bin."
+  },
+  "blue object": {
+    "sequence": [
+      {"action": "pickup", "pose": "hover"},
+      {"action": "pickup", "pose": "pre-grasp"},
+      {"action": "pickup", "pose": "grasp"},
+      {"action": "pickup", "pose": "post-grasp"},
+      {"action": "blue_bin", "pose": "post-grasp"},
+      {"action": "blue_bin", "pose": "grasp"},
+      {"action": "blue_bin", "pose": "pre-grasp"},
+      {"action": "blue_bin", "pose": "hover"}
+    ],
+    "description": "Pick the fixed pickup object and place it in the blue bin."
+  },
+  "empty": {
+    "action": null,
+    "description": "No object is visible, so the robot should not move."
+  },
+  "unknown": {
+    "action": null,
+    "description": "The model is unsure or the view is bad, so the robot should not move."
+  }
+}
