@@ -1,5 +1,6 @@
-import os, json, threading, argparse
-from robotics.robot.robot import Robot
+import os, json, threading, argparse, sys
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+from robot.robot import Robot
 
 # Square and pose types
 SQUARES = ['A', 'B', 'C', 'D', 'E', 'F', '0', '1', '2', '3', '4', '5', '6', '7', '8']
@@ -85,12 +86,15 @@ def main():
 
     # Record positions for each square and pose type
     for square in SQUARES:
-        print(f'Record positions for square {square}. Press enter to record. Press s to skip.')
+        print(f'Record positions for square {square}. Press enter to record. Press s to skip. Press q to close the program.')
         user_input = input()
         if user_input == 's':
             continue
+        if user_input == 'q':
+            break
         if square not in positions:
             positions[square] = {}
+
         for pose_type in POSE_TYPES:
             if not args.leader:
                 pos = record_position(arm, square, pose_type)

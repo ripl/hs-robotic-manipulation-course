@@ -7,7 +7,7 @@ class BoardVision:
     """
     Automatically detects the TicTacToe board state using a camera!
     """
-    def __init__(self, main=False, cam=0):
+    def __init__(self, main=False, cam=4, use_yolo=False, weights_path="handle_model.pt"):
         """
         No need to change anything!
         """
@@ -17,7 +17,7 @@ class BoardVision:
         self.h = None
         self.board_window = [0]*9
         self.board_state = [None]*9
-        self.old_board_state = None
+        self.old_board_state = [None]*9
         self.true_board_state = self.board_state.copy()
         self.confidence = 0
         self.confidence_threshold = 100
@@ -27,15 +27,103 @@ class BoardVision:
         self.camera_thread = None
         self.cap = cv2.VideoCapture(cam) #Tune this number until you get the USB camera!
         if not self.cap.isOpened():
-            raise RuntimeError(f"Could not open camera index {cam}. Try another index, such as 0, 1, 2, 3, or 4.")
+            raise RuntimeError(
+                f"Could not open camera index {cam}. Try another index, such as 0, 1, 2, 3, or 4."
+            )
+        self.use_yolo = use_yolo
+
         if main:
             self.cap_board_state()
         else:
-            self.camera_thread = threading.Thread(target=self.cap_board_state)
-            self.camera_thread.daemon = True
+            self.camera_thread = threading.Thread(target=self.cap_board_state, daemon=True)
             self.camera_thread.start()
 
+    def apply_nms(self, predictions, iou_threshold=0.5):
+        """
+        Applies Non-Maximum Suppression (NMS) to a list of bounding box predictions.
+        
+        Tuple format per item: (x1, y1, x2, y2, label, conf)
+        """
+        if not predictions:
+            return []
 
+        # 1. Sort predictions by confidence score in descending order
+        # Highest confidence boxes come first
+        sorted_preds = sorted(predictions, key=lambda item: item[5], reverse=True)
+        
+        keep_boxes = []
+
+        while sorted_preds:
+            # Pick the box with the highest confidence
+            current = sorted_preds.pop(0)
+            keep_boxes.append(current)
+            
+            c_x1, c_y1, c_x2, c_y2, c_label, c_conf = current
+            c_area = (c_x2 - c_x1) * (c_y2 - c_y1)
+            
+            filtered_preds = []
+            for next_box in sorted_preds:
+                n_x1, n_y1, n_x2, n_y2, n_label, n_conf = next_box
+
+                # Calculate coordinates of the intersection rectangle
+                inter_x1 = max(c_x1, n_x1)
+                inter_y1 = max(c_y1, n_y1)
+                inter_x2 = min(c_x2, n_x2)
+                inter_y2 = min(c_y2, n_y2)
+
+                # Compute width and height of intersection box
+                inter_w = max(0, inter_x2 - inter_x1)
+                inter_h = max(0, inter_y2 - inter_y1)
+                inter_area = inter_w * inter_h
+
+                # If there is no overlap, keep the box
+                if inter_area == 0:
+                    filtered_preds.append(next_box)
+                    continue
+
+                # Compute IoU (Intersection over Union)
+                n_area = (n_x2 - n_x1) * (n_y2 - n_y1)
+                union_area = c_area + n_area - inter_area
+                iou = inter_area / union_area if union_area > 0 else 0
+
+                # If IoU is below the threshold, keep the lower-confidence box.
+                # If IoU >= threshold, it gets dropped (suppression).
+                if iou < iou_threshold:
+                    filtered_preds.append(next_box)
+
+            # Update remaining list with non-suppressed boxes
+            sorted_preds = filtered_preds
+
+        return keep_boxes
+
+    def get_handle_info(self):
+        x = -1
+        y = -1
+        area = -1
+
+        max_conf = 0
+
+        for x1, y1, x2, y2, label, conf in self.last_predictions_clean:
+            box_area = (x2 - x1) * (y2 - y1)
+
+            if conf > max_conf and box_area > 13000:
+                max_conf = conf
+
+                x = (x1 + x2) // 2
+                y = (y1 + y2) // 2
+                area = box_area
+        
+        return (x, y, area)
+
+    def reset_vision(self):
+        """
+        Resets the internal vision board state baseline to empty.
+        """
+        self.board_window = [0]*9
+        self.board_state = [None]*9
+        self.old_board_state = [None]*9
+        self.true_board_state = [None]*9
+        self.confidence = self.confidence_threshold
 
     def get_tile_from_piece(self, px, py, pw, ph):
         """
@@ -116,6 +204,8 @@ class BoardVision:
                 print("Board state:")
                 for row in range(3):
                     print(" | ".join(" " if x is None else x for x in self.true_board_state[row*3:(row+1)*3]))
+                    if row < 2:
+                        print("-" * 9)
 
     def get_piece_change(self):
         """
@@ -149,8 +239,6 @@ class BoardVision:
         No changes needed!
         """
         while self.confidence < self.confidence_threshold:
-            if self.camera_error is not None:
-                raise RuntimeError(self.camera_error)
             time.sleep(0.05)
         return self.true_board_state
     
@@ -164,7 +252,9 @@ class BoardVision:
             time.sleep(0.1)
         print("new board status detected!")
         return self.get_board()
-
+    
+    def get_cap(self):
+        return self.cap
 
     def process_detected_piece(self, px, py, pw, ph, is_red):
         """
@@ -183,12 +273,16 @@ class BoardVision:
 
     def update_board_cam(self, x, y, w, h):
         """
-        No changes needed!
+        Smooths board position across frames using exponential moving average (low-pass filter).
         """
-        self.x = x
-        self.y = y
-        self.w = w
-        self.h = h
+        if self.x is None:
+            self.x, self.y, self.w, self.h = x, y, w, h
+        else:
+            alpha = 0.25  # Smooth out frame-to-frame jitter
+            self.x = self.x * (1 - alpha) + x * alpha
+            self.y = self.y * (1 - alpha) + y * alpha
+            self.w = self.w * (1 - alpha) + w * alpha
+            self.h = self.h * (1 - alpha) + h * alpha
     
     
     def cap_board_state(self):
@@ -200,19 +294,21 @@ class BoardVision:
         upper_red1 = np.array([15, 255, 255])
         lower_red2 = np.array([160, 0, 0])
         upper_red2 = np.array([180, 255, 255])
-        lower_blue = np.array([80, 100, 80])
+        lower_blue = np.array([100, 170, 80])
         upper_blue = np.array([120, 255, 255])
+
+        lower_blue_close = np.array([111, 197, 70])
+        upper_blue_close = np.array([120, 215, 90])
+
         lower_green = np.array([40, 100, 90])
         upper_green = np.array([90, 255, 255])
 
         while True:
             ret, frame = cap.read()
             if not ret:
-                self.camera_error = "Camera stopped returning frames. Check the camera index, permissions, and USB connection."
                 break
 
             if ret:
-                frame = cv2.flip(frame, -1)
                 height, width = frame.shape[:2]
 
                 # Calculate cropping coordinates for 50% zoom
@@ -233,35 +329,59 @@ class BoardVision:
             red_mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
             red_mask = cv2.bitwise_or(red_mask1, red_mask2)
 
-            blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)        
+            blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)   
+            blue_mask_close = cv2.inRange(hsv, lower_blue_close, upper_blue_close)     
             green_mask = cv2.inRange(hsv, lower_green, upper_green)
 
             contours_green, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            for cnt in contours_green:
-                area = cv2.contourArea(cnt)
-                if area > 500:
-                    x, y, w, h = cv2.boundingRect(cnt)
-                    cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                    self.update_board_cam(x,y,w,h)
+            valid_green = [cnt for cnt in contours_green if cv2.contourArea(cnt) > 100]
+            if valid_green:
+                all_pts = np.vstack(valid_green)
+                x_min = float(np.min(all_pts[:, 0, 0]))
+                x_max = float(np.max(all_pts[:, 0, 0]))
+                y_min = float(np.min(all_pts[:, 0, 1]))
+                y_max = float(np.max(all_pts[:, 0, 1]))
+
+                w = x_max - x_min
+                # Ensure y_max is at least y_min + w so pieces on bottom row don't block green and pull y_max upward
+                y_max = max(y_max, y_min + w)
+                h = max(y_max - y_min, w)
+                w = h  # Force square geometry
+
+                x = x_min
+                y = y_min
+
+                if w > 50 and h > 50:
+                    cv2.rectangle(frame, (int(x), int(y)), (int(x + w), int(y + h)), (0, 255, 0), 2)
+                    self.update_board_cam(x, y, w, h)
                     board_seen = True
-            if board_seen:
+
+            if board_seen and self.x is not None and self.w is not None and self.h is not None:
+                def is_inside_board(px, py, pw, ph):
+                    cx = px + pw / 2.0
+                    cy = py + ph / 2.0
+                    return (self.x <= cx <= self.x + self.w) and (self.y <= cy <= self.y + self.h)
+
                 contours_red, _ = cv2.findContours(red_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 for cnt in contours_red:
                     area = cv2.contourArea(cnt)
-                    if area > 500:
+                    if area > 800:
                         x, y, w, h = cv2.boundingRect(cnt)
-                        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
-                        self.process_detected_piece(x,y,w,h,True)
+                        if is_inside_board(x, y, w, h):
+                            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
+                            self.process_detected_piece(x, y, w, h, True)
 
                 contours_blue, _ = cv2.findContours(blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 for cnt in contours_blue:
                     area = cv2.contourArea(cnt)
-                    if area > 500:
+                    if area > 800:
                         x, y, w, h = cv2.boundingRect(cnt)
-                        cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
-                        self.process_detected_piece(x,y,w,h,False)
+                        if is_inside_board(x, y, w, h):
+                            cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+                            self.process_detected_piece(x, y, w, h, False)
                 for n in range(len(self.board_window)):
                     self.board_window[n] = self.board_window[n]*0.9
+                self.update_board_state()
             if self.main:
                 cv2.imshow("Camera View", frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -273,12 +393,16 @@ class BoardVision:
 
 if __name__ == "__main__":
     main=True
-    board = BoardVision(True, 0) #<- change the number around until you connect to the usb camera
+    import argparse
+    parser = argparse.ArgumentParser(description="TicTacToe BoardVision UI")
+    parser.add_argument("--cam", type=int, default=4, help="Camera index (default: 4)")
+    args = parser.parse_args()
+
+    board = BoardVision(main=True, cam=args.cam) #<- change the number around until you connect to the usb camera
 
     if not main:
         while True:
             if board.latest_frame is not None:
-                print("A")
                 cv2.imshow("Camera View", board.latest_frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break

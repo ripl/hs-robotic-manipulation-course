@@ -1,6 +1,8 @@
 import random, os, sys
-from robotics.robot.robot import Robot
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from robot.robot import Robot
 from players import Player, Arm, SmartArm
+import time
 
 class TicTacToe:
     """
@@ -111,13 +113,14 @@ class TicTacToe:
     >>> game.undo()
     This is the initial state of the board.
     """
-    def __init__(self, player1, player2, board=None):
+    def __init__(self, player1, player2, board=None, auto_start=True):
         """
         Create an instance of TicTacToe.
         
         :param player1: The first player.
         :param player2: The second player.
         :param board: Optional initial board state.
+        :param auto_start: Whether to automatically play the first move if player1 is SmartArm.
         """
         self.p1 = player1
         self.p2 = player2
@@ -144,7 +147,8 @@ class TicTacToe:
         print(self)
 
         # If the current player is a SmartArm, play a piece.
-        self.smart_place_piece()
+        if auto_start:
+            self.smart_place_piece()
 
     def current_player(self):
         """
@@ -193,6 +197,10 @@ class TicTacToe:
         :param pos: The position on the board.
         :returns: True if the move is valid, False otherwise.
         """
+        if pos == None:
+            print('AI was unable to find a move. Consider resetting the game.')
+            return False
+
         if not 0 <= pos < 9:
             print('Invalid space!')
             return False
@@ -202,7 +210,7 @@ class TicTacToe:
         else:
             return True 
     
-    def place_piece(self, pos):
+    def place_piece(self, pos, vision=None):
         """
         Handle updates to the state of the TicTacToe board.
         
@@ -214,7 +222,7 @@ class TicTacToe:
 
             current_player = self.current_player_obj()
             if isinstance(current_player, Arm):
-                self.arm_move(pos, current_player)            
+                self.arm_move(pos, current_player, vision)
 
             if not self.current_player_wins():
                 self.update()
@@ -235,11 +243,12 @@ class TicTacToe:
         else:
             self.curr_turn = self.p1.piece
 
-    def current_player_wins(self):
-        """String representation of the winner,
-        Checks to see if the current player has a winning triple.
+    def player_wins(self, piece):
+        """
+        Checks to see if the specified player piece has a winning triple.
         
-        :returns: True if the current player has won, False otherwise.
+        :param piece: 'x' or 'o'
+        :returns: True if the piece has won, False otherwise.
         """
         winning_triples = [
             (0, 1, 2), (3, 4, 5), (6, 7, 8),  # horizontal
@@ -247,10 +256,17 @@ class TicTacToe:
             (0, 4, 8), (2, 4, 6)              # diagonal
         ]
         for x, y, z in winning_triples:
-            if self.board[x] is not None and self.board[x] == self.board[y] == self.board[z]:
-
+            if self.board[x] == piece and self.board[y] == piece and self.board[z] == piece:
                 return True
         return False
+
+    def current_player_wins(self):
+        """String representation of the winner,
+        Checks to see if the current player has a winning triple.
+        
+        :returns: True if the current player has won, False otherwise.
+        """
+        return self.player_wins(self.curr_turn)
 
     def get_winner(self):
         """
@@ -325,7 +341,7 @@ class TicTacToe:
         """
         return self.p1 if self.curr_turn == self.p1.piece else self.p2
 
-    def arm_move(self, pos, current_player):
+    def arm_move(self, pos, current_player, vision=None):
         """
         Execute a move using the robotic arm if the current player is an Arm.
 
@@ -338,43 +354,76 @@ class TicTacToe:
         indx = random.randint(0, len(current_player.pieces) - 1)
         piece = current_player.pieces.pop(indx)
         current_player.used_pieces.append(piece)
-        current_player.move_piece(piece, str(pos))
+        if vision is not None:
+            current_player.move_piece_precise(piece, str(pos), vision)
+        else:
+            current_player.move_piece(piece, str(pos))
 
 if __name__ == '__main__':
 
-    print("Welcome to TicTacToe. \nYou are Player 1. \nPlayer 2 is the Smart Arm.\n")
+    print("Welcome to TicTacToe.\n")
     print("AI difficulty: ")
-    print("   Novice  (1)")
-    print("   Pro     (2)")
-    print("   Expert  (3)")
-    lvl = int(input("\nChoose Wisely: ").strip())
+    print("   Novice  (0)")
+    print("   Pro     (1)")
+    print("   Expert  (2)")
+    lvl_in = input("\nChoose Wisely (0-2, default 1): ").strip()
+    lvl = int(lvl_in) if lvl_in in ('0', '1', '2') else 1
 
-    p1 = Player('x')
-    p2 = SmartArm('o', lvl)
-    game = TicTacToe(p1, p2)
+    print("\nWho starts first?")
+    print("   1: Human (Red 'x')")
+    print("   2: Smart Arm (Red 'x')")
+    first = input("Choose starting player (1 or 2, default 1): ").strip()
+
+    if first == '2':
+        p1 = SmartArm('x', lvl)
+        p2 = Player('o')
+    else:
+        p1 = Player('x')
+        p2 = SmartArm('o', lvl)
+
+    arm_player = p1 if isinstance(p1, Arm) else p2
+
+    game = TicTacToe(p1, p2, auto_start=False)
 
     os.system('clear')
 
     print(p1)
     print(p2)
     print("Enter a position (0-8) to place your piece. \nThe SmartArm will play automatically.")
-    print("Enter 'q' at any time to quit. Press Enter to start the game.")
+    print("Enter 'q' at any time to quit.")
     print()
+
+    # If SmartArm goes first, play its first move
+    if isinstance(game.current_player_obj(), SmartArm):
+        game.smart_place_piece()
 
     while True:
         try:
-            user_input = input("Enter the position: ")
+            if game.current_player_wins() or game.determine_draw():
+                choice = input("\nGame Over! Press Enter or 'r' to restart (clean board) or 'q' to quit: ").strip().lower()
+                if choice == 'q':
+                    break
+                else:
+                    game.reset()
+                    if isinstance(game.current_player_obj(), SmartArm):
+                        game.smart_place_piece()
+                    continue
+
+            user_input = input("Enter position (0-8): ")
             if user_input.lower() == 'q':
                 print("Quitting the game.")
                 break
             pos = int(user_input)
             game.place_piece(pos)
-            game.smart_place_piece()
+            if not game.current_player_wins() and not game.determine_draw():
+                game.smart_place_piece()
         except ValueError:
             print("Invalid input. Please enter a number between 0 and 8 or 'q' to quit.")
         except Exception as e:
             print(f"An error occurred: {e}")
-            
-    # game.reset()
-    p2.arm.set_and_wait_goal_pos([2048, 1600, 1070, 2200, 2048, 2048])
-    p2.arm._disable_torque()
+
+    print(arm_player)
+    print(hasattr(arm_player, 'arm'))
+    if hasattr(arm_player, 'arm'):
+        arm_player.arm.set_and_wait_goal_pos(arm_player.arm_config['rest_pos'])
+        arm_player.arm._disable_torque()

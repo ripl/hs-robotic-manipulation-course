@@ -1,6 +1,10 @@
 import json
+import time
 import random
 from robotics.robot.robot import Robot
+from robotics.utils.track_piece import track_piece_ml
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 BOARD_POSITION_MAP = {
     '0': '0',
@@ -69,7 +73,8 @@ class Arm(Player):
     >>> p2
     ArmPlayer 2 is "o"
     """
-    def __init__(self, piece, config_path='../config.json', positions_path='../actions.json'):
+    def __init__(self, piece, config_path='../config.json', positions_path='../actions.json',
+                    vision=None):
         """
         Create an Arm instance, inherit from the Player class.
 
@@ -80,6 +85,12 @@ class Arm(Player):
         super().__init__(piece)
 
         # Load robot settings
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        if not os.path.isabs(config_path):
+            config_path = os.path.abspath(os.path.join(base_dir, config_path))
+        if not os.path.isabs(positions_path):
+            positions_path = os.path.abspath(os.path.join(base_dir, positions_path))
+
         with open(config_path, 'r') as f:
             config = json.load(f)
             self.arm_config = config['arm']
@@ -104,6 +115,8 @@ class Arm(Player):
         self.pieces = ["A", "B", "C", "D", "E"]
 
         self.used_pieces = []
+
+        self.vision = vision
 
     def __repr__(self):
         return f'ArmPlayer {self.count} is "{self.piece}"'
@@ -137,6 +150,10 @@ class Arm(Player):
         if self.piece == 'o' and clean:
             start = BOARD_POSITION_MAP[start]
 
+        if self.vision is not None:
+            self.move_piece_precise(start, end)
+            return
+
         valid_poses = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
 
         for pose in valid_poses:
@@ -145,7 +162,61 @@ class Arm(Player):
         for pose in reversed(valid_poses):
             self.arm.set_and_wait_goal_pos(self._pose_for_move(end, pose))
 
-        self.arm.set_and_wait_goal_pos(self.arm_config["home_pos"])
+        self.arm.set_and_wait_goal_pos(self.arm_config['home_pos'])
+
+    def adjust_loop(self):
+        for i in range(20):
+            # Return if vision is disconnected
+            if self.vision == None:
+                return
+
+            # Pass predictions to track_piece
+            contours = self.vision.last_predictions_clean
+            moves = track_piece_ml(contours)
+            if len(moves) == 0:
+                return
+
+            # Act out movements one by one
+            for servo_id, delta in moves.items():
+                self.move_servo(servo_id, delta)
+
+    def move_servo(self, servo_id, delta):
+        pos = self.arm.read_position()
+        pos[servo_id] += delta
+        self.arm.set_and_wait_goal_pos(pos)
+
+    def close_claw(self):
+        pos = self.arm.read_position()
+        pos[5] = 2100
+        self.arm.set_and_wait_goal_pos(pos)
+
+    def move_piece_precise(self, start, end):
+            """
+            Move a piece from start to end position on the physical board.
+
+            During the pre-grasp pose, the arm will adjust itself to better pick
+            up the piece.
+    
+            :param start: The start position on the physical board.
+            :param end: The end position on the physical board.
+            """
+            if self.vision is None:
+                self.move_piece(start, end)
+                return
+
+            valid_poses = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
+    
+            self.arm.set_and_wait_goal_pos(self.positions[start]['hover'])
+            self.arm.set_and_wait_goal_pos(self.positions[start]['pre-grasp'])
+            self.adjust_loop()
+            time.sleep(2.0)
+            self.close_claw()
+            self.arm.set_and_wait_goal_pos(self.positions[start]['post-grasp'])
+    
+            for pose in reversed(valid_poses):
+                self.arm.set_and_wait_goal_pos(self.positions[end][pose])
+    
+            self.arm.set_and_wait_goal_pos(self.arm_config["home_pos"])
 
     def clean_board(self, curr_board):
         """
@@ -172,14 +243,14 @@ class SmartArm(Arm):
     >>> p2
     SmartArmPlayer 2 is "o"
     """
-    def __init__(self, piece, lvl = 0):
+    def __init__(self, piece, lvl = 0, vision=None):
         """
         Create a Robotic Arm instance that can interact with the physical board autonomously.
         
         :param piece: The piece the robotic arm will play with.
         :param lvl: The level of autonomy or intelligence of the robotic arm. Default is 0.
         """
-        super().__init__(piece)
+        super().__init__(piece, vision=vision)
         
         if lvl == 0:
             self.play = self.novice
@@ -199,7 +270,10 @@ class SmartArm(Arm):
         """
         possible_moves = self.get_possible_moves(game)
 
-        random_move = random.choice(possible_moves)
+        if len(possible_moves) > 0:
+            random_move = random.choice(possible_moves)
+        else:
+            return 0
 
         game.place_piece(random_move)
 
@@ -209,11 +283,6 @@ class SmartArm(Arm):
 
         :param game: The current game instance.
         """
-        winning_triples = [
-            (0, 1, 2), (3, 4, 5), (6, 7, 8),  # horizontal
-            (0, 3, 6), (1, 4, 7), (2, 5, 8),  # vertical
-            (0, 4, 8), (2, 4, 6)              # diagonal
-        ]
 
         possible_moves = self.get_possible_moves(game)
 
@@ -223,18 +292,17 @@ class SmartArm(Arm):
             opp_piece = game.p1.piece
 
         for move in possible_moves:
-            self.pseudo_place_piece(game, move, self.piece)
-            win = game.current_player_wins()
-            self.pseudo_undo(game, move)
+            game.board[move] = self.piece
+            win = game.player_wins(self.piece)
+            game.board[move] = None
             if win:
                 game.place_piece(move)
                 return
         
         for move in possible_moves:
-            game.update()
-            self.pseudo_place_piece(game, move, opp_piece)
-            block = game.current_player_wins()
-            self.pseudo_undo(game, move)
+            game.board[move] = opp_piece
+            block = game.player_wins(opp_piece)
+            game.board[move] = None
             if block:
                 game.place_piece(move)
                 return
@@ -242,32 +310,61 @@ class SmartArm(Arm):
         self.novice(game)
        
 
-    def minimax(self, is_max_turn, maximizer_mark, game, depth):
+    def minimax(self, is_maximizing, piece, game, depth):
         """
         Implement the minimax algorithm to determine the best move for the AI.
 
-        :param is_max_turn: A boolean indicating if the current player is the maximizing player.
-        :param maximizer_mark: The mark of the maximizing player ('x' or 'o').
+        :param is_maximizing: A boolean indicating if the current player is the maximizing player.
+        :param piece: The mark of the maximizing player ('x' or 'o').
         :param game: The current game instance.
         :param depth: The depth of the current call.
         :return: The optimal move score for the current board state.
         """
-        if game.get_winner() is not None and game.get_winner() != self.piece:
+
+        if piece=="o":
+            other_piece="x"
+        else:
+            other_piece="o"
+        win = game.player_wins(piece)
+        block = game.player_wins(other_piece)
+        if win:
             return 10 - depth
-        elif game.get_winner() == self.piece:
+        elif block:
             return depth - 10
         elif game.determine_draw():
             return 0
         
-        depth += 1
-
-        scores = []
-        for pos in self.get_possible_moves(game):
-            self.pseudo_place_piece(game, pos, maximizer_mark)
-            scores.append(self.minimax(not is_max_turn, game.curr_turn, game, depth))
-            self.pseudo_undo(game, pos)
-
-        return max(scores) if is_max_turn else min(scores)
+        possible_plays = self.get_possible_moves(game)      
+        if is_maximizing:
+            # if it is the maximizing player's turn (computer), 
+            # we want to maximize the score
+            best_score = float("-inf")
+            for move in possible_plays:
+                # Make a calculating move
+                game.board[move] = piece
+                # Recursively call minimax 
+                # with the next depth and the minimizing player
+                score = self.minimax(False, piece, game, depth + 1)
+                # Reset the move
+                game.board[move] = None
+                # Update the best score
+                best_score = max(score, best_score)
+            return best_score
+        else:
+        # if it is the minimizing player's turn (human), 
+        # we want to minimize the score
+            best_score = float("inf")
+            for move in possible_plays:
+                # Make a calculating move
+                game.board[move] = other_piece
+                # Recursively call minimax with 
+                # the next depth and the maximizing player
+                score = self.minimax(True, piece, game, depth + 1)
+                # Reset the move
+                game.board[move] = None
+                # Update the best score
+                best_score = min(score, best_score)
+            return best_score
 
     def expert(self, game):
         """
@@ -279,13 +376,13 @@ class SmartArm(Arm):
         best_move = None
         possible_moves = self.get_possible_moves(game)
         random.shuffle(possible_moves)
-        for pos in possible_moves:
-            self.pseudo_place_piece(game, pos, self.piece)
-            score = self.minimax(False, game.curr_turn, game, 0)
-            self.pseudo_undo(game, pos)
+        for move in possible_moves:
+            game.board[move] = self.piece
+            score = self.minimax(False, self.piece, game, 0)
+            game.board[move] = None
             if score > best_score:
                 best_score = score
-                best_move = pos
+                best_move = move
         game.place_piece(best_move)
 
     def pseudo_place_piece(self, game, pos, piece):
@@ -306,6 +403,7 @@ class SmartArm(Arm):
         :param game: The current game instance.
         :param pos: The position on the board to clear.
         """
+        print("undo")
         game.board[pos] = None
         game.update()
 

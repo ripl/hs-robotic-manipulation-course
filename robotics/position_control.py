@@ -1,6 +1,8 @@
 import json
 import time
 import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 import threading
 import argparse
 import numpy as np
@@ -9,8 +11,9 @@ from robot.robot import Robot
 
 CONVERSION_FACTOR = 4096 / 360
 VALID_POSE_TYPES = ['hover', 'pre-grasp', 'grasp', 'post-grasp']
-CONFIG_FILE = 'config.json'
-ACTIONS_FILE = 'actions.json'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(BASE_DIR, 'config.json')
+ACTIONS_FILE = os.path.join(BASE_DIR, 'actions.json')
 
 
 def parse_arguments():
@@ -327,7 +330,6 @@ def initiate_action(arm, action):
             return
     print(f"{action} completed successfully.")
 
-
 def handle_user_input(user_input, arm, lead, arm_config):
     """
     Handle user input to control the robotic arm.
@@ -423,6 +425,8 @@ def main():
                     print("Goodbye!")
                     proceed = False
             else:
+                time.sleep(0.5)
+                arm.set_and_wait_goal_pos(arm_config['home_pos'])
                 print('1) Enter "p" to position a specific motor.')
                 print('2) Enter "a" to use a saved action.')
                 print('3) Enter "g" to go to a specific pose within an action.')
