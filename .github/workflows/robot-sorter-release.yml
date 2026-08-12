@@ -39,6 +39,23 @@ jobs:
         run: python -m unittest discover -s robotics/ml/tests -v
       - name: Build native application
         run: pyinstaller --clean --noconfirm robotics/ml/robot-sorter.spec
+      - name: Smoke-test native applications (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & ./dist/RobotSorter.exe --help
+          & ./dist/RobotPoseRecorder.exe --help
+      - name: Smoke-test native applications (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          ./dist/RobotSorter/RobotSorter --help
+          ./dist/RobotSorter.app/Contents/MacOS/RobotSorter --help
+          ./dist/RobotPoseRecorder --help
+      - name: Smoke-test native applications (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          ./dist/RobotSorter --help
+          ./dist/RobotPoseRecorder --help
       - name: Add launchers (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
