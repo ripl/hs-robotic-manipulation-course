@@ -8,6 +8,8 @@ The browser runs either a hosted model, an exported model selected from disk, or
 
 Use the native `RobotSorter` build for that operating system. It includes Python, the browser libraries, and the application dependencies. The recipient only needs the robot's USB driver when their operating system does not already provide it.
 
+For recipient-facing Windows, macOS, and Linux instructions, see the [complete Robot Sorter installation guide](https://arm.ttic.edu/modules/robot-arm/robot-sorter-installation/).
+
 1. Connect robot power, the Dynamixel USB adapter, and the camera.
 2. Launch `RobotSorter`; it opens the local control page.
 3. Under **Robot Setup**, refresh devices and select the adapter.

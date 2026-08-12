@@ -160,7 +160,7 @@ If a motion does not settle within the configured timeout, the bridge faults, at
 
 ## Moving to another computer
 
-The preferred handoff is the native `RobotSorter` artifact for Windows, macOS, or Linux. Launch it, select the detected serial adapter in **Robot Setup**, run preflight, and test in dry-run mode. Docker is not required and can complicate direct USB access. Each physical arm/layout still needs its own recorded pickup and bin poses.
+Follow the [complete Robot Sorter installation guide](https://arm.ttic.edu/modules/robot-arm/robot-sorter-installation/). The preferred handoff is the native `RobotSorter` artifact for Windows, macOS, or Linux. Docker is not required and can complicate direct USB access. The guide covers transferring an unchanged arm's calibration profile, calibrating a new physical layout, dry-run validation, and physical execution.
 
 ## Reflection Questions
 
