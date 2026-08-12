@@ -6,7 +6,7 @@ The browser runs either a hosted model, an exported model selected from disk, or
 
 ## Easiest setup on another computer
 
-Use the native `RobotSorter` build for that operating system. It includes Python, the browser libraries, and the application dependencies. The recipient only needs the robot's USB driver when their operating system does not already provide it.
+Use the native `RobotSorter` build for that operating system and CPU architecture. Separate Apple Silicon and Intel packages are provided for macOS. The package includes Python, the browser libraries, and the application dependencies. The recipient only needs the robot's USB driver when their operating system does not already provide it.
 
 For recipient-facing Windows, macOS, and Linux instructions, see the [complete Robot Sorter installation guide](https://arm.ttic.edu/modules/robot-arm/robot-sorter-installation/).
 

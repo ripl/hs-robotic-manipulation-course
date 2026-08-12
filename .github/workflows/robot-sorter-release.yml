@@ -17,10 +17,16 @@ jobs:
         include:
           - os: windows-latest
             artifact: RobotSorter-Windows
-          - os: macos-14
-            artifact: RobotSorter-macOS
+            package: RobotSorter-Windows
+          - os: macos-15
+            artifact: RobotSorter-macOS-Apple-Silicon
+            package: RobotSorter-macOS-Apple-Silicon
+          - os: macos-15-intel
+            artifact: RobotSorter-macOS-Intel
+            package: RobotSorter-macOS-Intel
           - os: ubuntu-22.04
             artifact: RobotSorter-Linux
+            package: RobotSorter-Linux
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -43,14 +49,14 @@ jobs:
       - name: Package release (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: Compress-Archive -Path dist/* -DestinationPath RobotSorter-Windows.zip
+        run: Compress-Archive -Path dist/* -DestinationPath ${{ matrix.package }}.zip
       - name: Package release (macOS/Linux)
         if: runner.os != 'Windows'
-        run: tar -czf "RobotSorter-${{ runner.os }}.tar.gz" -C dist .
+        run: tar -czf "${{ matrix.package }}.tar.gz" -C dist .
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: RobotSorter-*
+          path: ${{ matrix.package }}.*
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
