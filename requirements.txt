@@ -1,7 +1,7 @@
-dynamixel-sdk==3.7.31
-numpy==2.2.6
-opencv-python==4.13.0.92
-pandas==2.2.2
-pygame==2.6.1
-pyserial==3.5
+dynamixel-sdk
+numpy
+opencv-python
+pandas
+pygame
+pyserial
 mujoco
