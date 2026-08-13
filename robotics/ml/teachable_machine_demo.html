@@ -78,6 +78,7 @@
     input[type="text"],
     input[type="number"],
     input[type="file"],
+    input[type="range"],
     select {
       width: 100%;
       padding: 0.55rem 0.65rem;
@@ -272,6 +273,8 @@
 
     <section>
       <h2>Camera</h2>
+      <label for="camera-zoom">Camera zoom: <span id="camera-zoom-value">1.75×</span></label>
+      <input id="camera-zoom" type="range" min="1" max="3" step="0.05" value="1.75">
       <div id="webcam-container"></div>
       <div class="status" id="stable-status">No model running.</div>
     </section>
@@ -303,12 +306,16 @@
     const labelContainer = document.getElementById("label-container");
     const serverStatus = document.getElementById("server-status");
     const webcamContainer = document.getElementById("webcam-container");
+    const cameraZoomInput = document.getElementById("camera-zoom");
+    const cameraZoomValue = document.getElementById("camera-zoom-value");
     const serialPortInput = document.getElementById("serial-port");
     const setupStatus = document.getElementById("setup-status");
     const quitButton = document.getElementById("quit-button");
 
     let model = null;
     let webcam = null;
+    let zoomCanvas = null;
+    let zoomContext = null;
     let running = false;
     let lastTopClass = null;
     let stableCount = 0;
@@ -316,6 +323,34 @@
     let configuredDevice = "";
 
     modelUrlInput.value = localStorage.getItem("tm-model-url") || "";
+    cameraZoomInput.value = localStorage.getItem("tm-camera-zoom") || "1.75";
+    cameraZoomValue.textContent = Number(cameraZoomInput.value).toFixed(2) + "×";
+
+    cameraZoomInput.addEventListener("input", () => {
+      cameraZoomValue.textContent = Number(cameraZoomInput.value).toFixed(2) + "×";
+      localStorage.setItem("tm-camera-zoom", cameraZoomInput.value);
+      updateZoomedFrame();
+    });
+
+    function updateZoomedFrame() {
+      if (!webcam || !zoomCanvas || !zoomContext) return;
+      const zoom = Number(cameraZoomInput.value);
+      const sourceWidth = webcam.canvas.width / zoom;
+      const sourceHeight = webcam.canvas.height / zoom;
+      const sourceX = (webcam.canvas.width - sourceWidth) / 2;
+      const sourceY = (webcam.canvas.height - sourceHeight) / 2;
+      zoomContext.drawImage(
+        webcam.canvas,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+        0,
+        0,
+        zoomCanvas.width,
+        zoomCanvas.height
+      );
+    }
 
     async function checkServer() {
       try {
@@ -375,7 +410,11 @@
         await webcam.play();
 
         webcamContainer.innerHTML = "";
-        webcamContainer.appendChild(webcam.canvas);
+        zoomCanvas = document.createElement("canvas");
+        zoomCanvas.width = webcam.canvas.width;
+        zoomCanvas.height = webcam.canvas.height;
+        zoomContext = zoomCanvas.getContext("2d");
+        webcamContainer.appendChild(zoomCanvas);
         labelContainer.innerHTML = "";
 
         for (let i = 0; i < model.getTotalClasses(); i++) {
@@ -398,12 +437,13 @@
         return;
       }
       webcam.update();
+      updateZoomedFrame();
       await predict();
       window.requestAnimationFrame(loop);
     }
 
     async function predict() {
-      const predictions = await model.predict(webcam.canvas);
+      const predictions = await model.predict(zoomCanvas);
       predictions.sort((a, b) => b.probability - a.probability);
 
       predictions.forEach((prediction, index) => {
