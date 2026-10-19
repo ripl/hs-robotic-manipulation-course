@@ -15,10 +15,23 @@ from tqdm import trange
 NUM_SQUARES = 9
 
 class GraspDataset(Dataset):
-    def __init__(self, labels_dir, img_size=(640, 480)):
-        self.label_paths = sorted(glob.glob(os.path.join(labels_dir, '*.json')))
-        if not self.label_paths:
+    def __init__(self, labels_dir, img_size=(640, 360)):
+        """img_size: fallback (w, h) for labels saved before generate_data.py recorded 'img_size'."""
+        all_paths = sorted(glob.glob(os.path.join(labels_dir, '*.json')))
+        if not all_paths:
             raise ValueError(f"No .json files found in {labels_dir}")
+
+        # Skip samples where SimVision found no piece: vision.py doesn't run the model without a bbox
+        self.label_paths = []
+        for path in all_paths:
+            with open(path, 'r') as f:
+                if json.load(f).get('vision_piece_bbox') is not None:
+                    self.label_paths.append(path)
+        n_skipped = len(all_paths) - len(self.label_paths)
+        if n_skipped:
+            print(f"Skipping {n_skipped} samples with no detected bbox")
+        if not self.label_paths:
+            raise ValueError(f"No samples with a detected bbox in {labels_dir}")
 
         self.num_squares = NUM_SQUARES
         self.img_w, self.img_h = img_size
@@ -41,16 +54,15 @@ class GraspDataset(Dataset):
         # --- bbox: (x, y, w, h) in pixels, or None if not detected ---
         bbox = row['vision_piece_bbox']
 
-        if type(row['vision_piece_bbox']) != list:
-            raise ValueError(f"Row {idx} has no bounding box!")
+        img_w, img_h = row.get('img_size', (self.img_w, self.img_h))
 
         if bbox is not None:
             x, y, w, h = bbox
             bbox_norm = torch.tensor([
-                x / self.img_w,
-                y / self.img_h,
-                w / self.img_w,
-                h / self.img_h,
+                x / img_w,
+                y / img_h,
+                w / img_w,
+                h / img_h,
             ], dtype=torch.float32)
             bbox_missing = torch.tensor([0.0])
         else:
@@ -148,7 +160,13 @@ def train(model: GraspMLP, dataset, optimizer, loss_fn, device, n_epochs=5000):
 def main():
     dataset = GraspDataset('dataset/labels/')
 
-    device = 'mps' if torch.backends.mps.is_available() else 'cpu'
+    if torch.cuda.is_available():
+        device = 'cuda'
+    elif torch.backends.mps.is_available():
+        device = 'mps'
+    else:
+        device = 'cpu'
+    print(f"Training on {device}")
     model = GraspMLP(grid_size=7).to(device)
     optimizer = optim.AdamW(model.parameters())
     loss_fn = nn.BCEWithLogitsLoss()

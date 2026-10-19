@@ -1,6 +1,11 @@
 from scipy import ndimage
 import numpy as np
 
+# Grasp conventions shared by sim data generation (generate_data.py) and the real arm (sim_robot.py)
+GRASP_YAW = 0.0  # world-frame claw heading (rad) at hover and grasp -- matches the recorded hover poses
+GRIPPER_OPEN_TICKS = 2400  # partly open: clears the piece without sweeping its neighbours
+GRIPPER_OPEN_SIM = -(GRIPPER_OPEN_TICKS / 2048 - 1) * 3.14  # same value in sim radians (gripper joint sign is -1)
+
 def select_grasp_cell(probs, threshold=0.5, fallback_to_argmax=True):
     """
     probs: (grid_size, grid_size) array of sigmoid probabilities

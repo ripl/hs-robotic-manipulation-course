@@ -4,6 +4,7 @@ import time
 from typing import Union
 from robotics.robot.robot import Robot
 from robotics.game.players import Arm
+from robotics.simulation.grid_util import GRASP_YAW, GRIPPER_OPEN_SIM
 
 class SimRobot(Arm):
     def __init__(self, 
@@ -91,11 +92,12 @@ class SimRobot(Arm):
 
     def ik_new(self, ee_target_pos, site_name='ee_site',
                         damping=1e-4, max_iters=500, tol=1e-4, step_scale=0.5,
-                        far_dist=0.3, near_dist=0.12, base_body='base_link'):
+                        far_dist=0.3, near_dist=0.12, base_body='base_link', target_yaw=None):
         """
         Hierarchical IK with base-relative, distance-adaptive orientation priority.
         alpha is computed once from how far the target is from the arm's base,
         not from the shrinking solve error.
+        target_yaw: world-frame claw heading (rad). None points the claw away from the base.
         """
         ee_target_pos = np.asarray(ee_target_pos)
         q_real_initial = self.sync_mujoco_to_real()
@@ -119,7 +121,10 @@ class SimRobot(Arm):
         print("alpha:", alpha)
         print("reach_dist:", reach_dist)
 
-        desired_yaw = np.arctan2(ee_target_pos[1] - base_pos[1], ee_target_pos[0] - base_pos[0])
+        if target_yaw is not None:
+            desired_yaw = target_yaw
+        else:
+            desired_yaw = np.arctan2(ee_target_pos[1] - base_pos[1], ee_target_pos[0] - base_pos[0])
         yaw_quat = np.zeros(4)
         mujoco.mju_axisAngle2Quat(yaw_quat, np.array([0, 0, 1]), desired_yaw)
         flip_quat = np.array([0, 1, 0, 0])
@@ -255,7 +260,7 @@ class SimRobot(Arm):
         grasp_target = np.array([target_xy[0], target_xy[1], 0.02])  # grasp_height=0.02
         print("grasp_target:", grasp_target)
 
-        q_grasp = self.ik_new(grasp_target, max_iters=500)
+        q_grasp = self.ik_new(grasp_target, max_iters=500, target_yaw=GRASP_YAW)
         print("IK solution (sim-space):", q_grasp)
         print("delta from current pose:", q_grasp[:6] - self.d.qpos[:6])
 
@@ -268,8 +273,9 @@ class SimRobot(Arm):
 
         grasp_target = np.array([target_xy[0], target_xy[1], grasp_height])
 
-        q = self.ik_new(grasp_target, max_iters=500, damping=1e-2)
-        q[5] = -1  # open
+        # Same claw heading and opening as the sim grasp attempts (generate_data.py)
+        q = self.ik_new(grasp_target, max_iters=500, damping=1e-2, target_yaw=GRASP_YAW)
+        q[5] = GRIPPER_OPEN_SIM  # partly open (2400 ticks)
         self.move_checked(q, grasp_target, "descend to grasp (gripper open)")
         time.sleep(0.3)  # let servos settle -- no mj_step equivalent, just wait
 

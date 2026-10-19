@@ -10,7 +10,7 @@ import time
 import tqdm
 from simulation.interface import SimulatedRobot
 from simulation.sim_vision import SimVision
-from simulation.grid_util import select_grasp_bbox
+from simulation.grid_util import select_grasp_bbox, GRASP_YAW, GRIPPER_OPEN_SIM
 
 FAIL_NONE = 0        # successful lift
 FAIL_NO_LIFT = 1     # unsuccessful lift
@@ -60,7 +60,8 @@ class DatasetGenerator:
         self.lift_height = lift_height
 
         # IK Params
-        self.ik_kwargs = dict(near_dist=0.12, far_dist=0.3, max_iters=500)
+        # target_yaw keeps the claw square to the board at every square, like the real hover poses
+        self.ik_kwargs = dict(near_dist=0.12, far_dist=0.3, max_iters=500, target_yaw=GRASP_YAW)
 
         # Vision and Rendering
         self.vision = SimVision(main=False, use_yolo=False, external_source=True)
@@ -72,6 +73,8 @@ class DatasetGenerator:
 
     def generate_dataset(self, n_samples, start_idx=0):
         print(f"Generating data (samples {start_idx} to {start_idx + n_samples - 1})...")
+        # Seed from start_idx: each shard is reproducible, and parallel shards differ
+        np.random.seed(start_idx)
 
         for idx in tqdm.trange(start_idx, start_idx + n_samples):
             mujoco.mj_resetData(self.m, self.d)
@@ -79,11 +82,10 @@ class DatasetGenerator:
 
             # Trial Setup
             square_idx = idx % 9 # rotate between all 9 squares
-            square_idx = 7
             square_center = self.square_centers[square_idx]
 
             piece_pos, yaw = self.randomize_piece(square_idx=square_idx)
-            hover_pos, _ = self.randomize_hover(square_center)  # jitter around the square, not the piece
+            hover_target, _ = self.randomize_hover(square_center)  # jitter around the square, not the piece
             self.place_obstacles(square_idx)
 
             mujoco.mj_forward(self.m, self.d)
@@ -91,12 +93,20 @@ class DatasetGenerator:
             piece_pos = self.d.body('o_piece').xpos.copy()  # overwrite with settled pos
 
             # Get Hover Image
-            q = self._ik(hover_pos)
-            q[5] = -1
-            q[4] = -q[0]
+            q = self._ik(hover_target)   # wrist roll cancelling the base now comes from target_yaw
+            q[5] = GRIPPER_OPEN_SIM   # grasp attempts start from here, so open only partly
 
             self.move_to_target_smooth(q, min_duration=0.3)
-            self._settle(300)
+            # Wait for the base to actually arrive before rendering: it lags 0.1-0.2 rad at the
+            # end of the move and needs ~3 s to catch up (a fixed 300-step settle left 12-17 mm of error).
+            # Joints 2-5 keep a small gravity sag, so they get a looser tolerance.
+            self._settle_until_reached(q, max_steps=5000, pos_tol=np.array([0.002] + [0.025] * 5))
+
+            # The grid stays centred on the IK target: grasp attempts sag the same way the hover does,
+            # so target-relative offsets match where the claw really goes (centring on the measured
+            # pose double-counted the sag, ~2 mm). The measured pose is saved for diagnostics.
+            hover_pos = hover_target
+            hover_measured = self.d.site_xpos[self.site_id].copy()
 
             # Render Exactly Once
             img = self.render_image()
@@ -110,10 +120,12 @@ class DatasetGenerator:
                 'square_idx': int(square_idx),
                 'piece_pos': piece_pos.tolist(),
                 'piece_yaw': float(yaw),
-                'hover_pos': hover_pos.tolist(),
+                'hover_pos': hover_pos.tolist(),            # grid centre (IK target)
+                'hover_measured': hover_measured.tolist(),  # where the end effector settled
                 'labels': labels.tolist(),
                 'grid_spacing': self.grid_spacing,
                 'vision_piece_bbox': list(piece_bbox) if piece_bbox is not None else None,
+                'img_size': list(self.img_size),  # (w, h) the bbox is in -- training normalises by this
                 'max_grasp_radius': self.max_grasp_radius,
                 'hover_radius': self.hover_radius,
                 'fail_reason_counts': {
@@ -235,13 +247,13 @@ class DatasetGenerator:
         target_piece_body_id = self.m.body('o_piece').id
 
         # Move Laterally
-        q = self._ik(hover_target, max_iters=100, damping=1e-2)
-        q[5] = -0.45
+        q = self._ik(hover_target, max_iters=500, damping=1e-2)
+        q[5] = GRIPPER_OPEN_SIM
         self.move_to_target_smooth(q)
         self._settle_until_reached(q, max_steps=1000, pos_tol=0.025, vel_thresh=5e-3)
 
         # Descend with Dampening
-        q = self._ik(grasp_target, max_iters=100, damping=1e-2)
+        q = self._ik(grasp_target, max_iters=500, damping=1e-2)
         self.move_to_target_smooth(q)
         self._settle_until_reached(q, max_steps=1000, pos_tol=0.025, vel_thresh=5e-3)
 
@@ -257,7 +269,7 @@ class DatasetGenerator:
 
         # Lift with Dampening
         lift_target = grasp_target + np.array([0, 0, self.lift_height])
-        q = self._ik(lift_target, max_iters=100, damping=1e-2)
+        q = self._ik(lift_target, max_iters=500, damping=1e-2)
         q[5] = 0.1
         self.move_to_target_smooth(q)
         self._settle(n_settle_steps)
@@ -391,8 +403,7 @@ class DatasetGenerator:
             vel_ok = np.linalg.norm(self.d.qvel) < vel_thresh
             pos_ok = np.all(pos_err < pos_tol)
             if vel_ok and pos_ok:
-                print(f"It took {i} iterations")
-                break
+                return
         print(f"TIMEOUT after {max_steps} steps. pos_err={pos_err}, "
             f"qvel_norm={np.linalg.norm(self.d.qvel):.5f}")
 
@@ -411,6 +422,8 @@ def parse_args():
     parser.add_argument('--model_path', type=str,
                          default='low_cost_robot_6dof/train_scene.xml',
                          help="Path to the MJCF scene file.")
+    parser.add_argument('--debug_viewer', action='store_true',
+                         help="Open the MuJoCo viewer (needs a display -- leave off on headless servers).")
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -420,6 +433,6 @@ if __name__ == '__main__':
                                 square_half_size=0.008, hover_radius=0.005, grid_size=7,
                                 grid_spacing=0.005, max_grasp_radius=0.03,
                                 grasp_height=0.025, lift_height=0.08,
-                                debug_viewer=True)
+                                debug_viewer=args.debug_viewer)
 
     gen.generate_dataset(n_samples=args.n_samples, start_idx=args.start_idx)

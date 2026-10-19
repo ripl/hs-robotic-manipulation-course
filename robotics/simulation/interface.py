@@ -79,11 +79,12 @@ class SimulatedRobot:
 
     def ik_new(self, ee_target_pos, site_name='ee_site',
                         damping=1e-4, max_iters=500, tol=1e-4, step_scale=0.5,
-                        far_dist=0.3, near_dist=0.12, base_body='base_link'):
+                        far_dist=0.3, near_dist=0.12, base_body='base_link', target_yaw=None):
         """
         Hierarchical IK with base-relative, distance-adaptive orientation priority.
         alpha is computed once from how far the target is from the arm's base,
         not from the shrinking solve error.
+        target_yaw: world-frame claw heading (rad). None points the claw away from the base.
         """
         site_id = self.m.site(site_name).id
         base_id = self.m.body(base_body).id
@@ -99,7 +100,10 @@ class SimulatedRobot:
         # you want strict-orientation only far away instead; see note underneath.
         alpha = 1.0 - alpha  # alpha=1 near base (strict), alpha=0 far from base (soft)
 
-        desired_yaw = np.arctan2(ee_target_pos[1] - base_pos[1], ee_target_pos[0] - base_pos[0])
+        if target_yaw is not None:
+            desired_yaw = target_yaw
+        else:
+            desired_yaw = np.arctan2(ee_target_pos[1] - base_pos[1], ee_target_pos[0] - base_pos[0])
         yaw_quat = np.zeros(4)
         mujoco.mju_axisAngle2Quat(yaw_quat, np.array([0, 0, 1]), desired_yaw)
         flip_quat = np.array([0, 1, 0, 0])
