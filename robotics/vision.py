@@ -2,13 +2,17 @@ import cv2
 import numpy as np
 import threading
 import time
+import torch
+import torch.nn.functional as F
+from simulation.grid_util import select_grasp_cell
+from simulation.train_precision_mlp import GraspMLP
 from ultralytics import YOLO
 
 class BoardVision:
     """
     Automatically detects the TicTacToe board state using a camera!
     """
-    def __init__(self,main=False,cam=4,use_yolo=False, weights_path="handle_model.pt"):
+    def __init__(self,main=False,cam=4,use_yolo=False, weights_path="handle_model.pt", grasp_model_path=None):
         """
         No need to change anything!
         """
@@ -25,15 +29,29 @@ class BoardVision:
         self.main = main
         self.cap = cv2.VideoCapture(cam) #Tune this number until you get the USB camera!
 
+        self.blue_pieces = []
+
+        self.grasp_model = None
+        if grasp_model_path is not None:
+            self.grasp_model = GraspMLP(grid_size=7)
+            self.grasp_model.load_state_dict(torch.load(grasp_model_path, map_location='cpu'))
+            self.grasp_model.eval()
+            self.num_squares = 9
+            self.img_w, self.img_h = (1920, 1080)
+            self.last_grid = []
+
         # Load YOLO model
         self.use_yolo = use_yolo
 
         if use_yolo:
-            self.frame_count = 0
             self.last_predictions = []
             self.model = YOLO(weights_path)
-            self.infer_every_n = 3
             self.last_predictions_clean = []
+
+        if grasp_model_path is not None or use_yolo:
+            self.last_grid_spot = None
+            self.frame_count = 0
+            self.infer_every_n = 3
 
         if main:
             self.cap_board_state()
@@ -44,7 +62,7 @@ class BoardVision:
     def apply_nms(self, predictions, iou_threshold=0.5):
         """
         Applies Non-Maximum Suppression (NMS) to a list of bounding box predictions.
-        
+
         Tuple format per item: (x1, y1, x2, y2, label, conf)
         """
         if not predictions:
@@ -53,17 +71,17 @@ class BoardVision:
         # 1. Sort predictions by confidence score in descending order
         # Highest confidence boxes come first
         sorted_preds = sorted(predictions, key=lambda item: item[5], reverse=True)
-        
+
         keep_boxes = []
 
         while sorted_preds:
             # Pick the box with the highest confidence
             current = sorted_preds.pop(0)
             keep_boxes.append(current)
-            
+
             c_x1, c_y1, c_x2, c_y2, c_label, c_conf = current
             c_area = (c_x2 - c_x1) * (c_y2 - c_y1)
-            
+
             filtered_preds = []
             for next_box in sorted_preds:
                 n_x1, n_y1, n_x2, n_y2, n_label, n_conf = next_box
@@ -115,7 +133,7 @@ class BoardVision:
                 x = (x1 + x2) // 2
                 y = (y1 + y2) // 2
                 area = box_area
-        
+
         return (x, y, area)
 
     def reset_vision(self):
@@ -128,48 +146,45 @@ class BoardVision:
         self.true_board_state = [None]*9
         self.confidence = self.confidence_threshold
 
+    def get_centermost_blue_piece(self):
+        """Returns (x, y, w, h) of the blue piece closest to the image center, or None."""
+        pieces = list(self.blue_pieces)
+        if not pieces:
+            return None
+        cx, cy = self.img_w / 2, self.img_h / 2
+        return min(pieces, key=lambda p: ((p[0] - cx) ** 2 + (p[1] - cy) ** 2) ** 0.5)
 
-        max_conf = 0
-
-        for x1, y1, x2, y2, label, conf in self.last_predictions_clean:
-            box_area = (x2 - x1) * (y2 - y1)
-
-            if conf > max_conf and box_area > 13000:
-                max_conf = conf
-
-                x = (x1 + x2) // 2
-                y = (y1 + y2) // 2
-                area = box_area
-        
-        return (x, y, area)
-
-    def draw_model_predictions(self, frame):
+    def draw_model_predictions(self, infer_frame, draw_frame):
         """
-        Draw the cached predictions on every frame; only run YOLO
-        (and refresh the cache) every self.infer_every_n frames.
+        Run YOLO inference on `infer_frame` (the untouched camera frame used
+        for real detection) but draw the cached predictions onto `draw_frame`
+        (a display-only copy), so visualization never feeds back into the
+        actual board/piece detection pipeline.
+
+        Only re-runs YOLO (and refreshes the cache) every self.infer_every_n frames.
         """
 
         if self.frame_count % self.infer_every_n == 0:
-            results = self.model.predict(frame, conf=0.25, verbose=False)[0]
+            results = self.model.predict(infer_frame, conf=0.25, verbose=False)[0]
             self.last_predictions = [
                 (*map(int, box.tolist()), self.model.names[int(cls)], float(conf))
                 for box, cls, conf in zip(results.boxes.xyxy, results.boxes.cls, results.boxes.conf)
             ]
             self.last_predictions_clean = self.apply_nms(self.last_predictions)
 
-        cv2.circle(img=frame, center=(1080, 195), radius=15, color=(255,255,255))
+        cv2.circle(img=draw_frame, center=(1080, 195), radius=15, color=(255,255,255))
 
         for x1, y1, x2, y2, label, conf in self.last_predictions_clean:
             pos_x = (x1 + x2) // 2
             pos_y = (y1 + y2) // 2
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
+            cv2.rectangle(draw_frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
 
             area = (x2-x1) * (y2-y1)
 
-            cv2.putText(frame, f"{label} {conf:.2f}, Pos: ({pos_x}, {pos_y}), Area: {area}", (x1, max(y1 - 8, 0)),
+            cv2.putText(draw_frame, f"{label} {conf:.2f}, Pos: ({pos_x}, {pos_y}), Area: {area}", (x1, max(y1 - 8, 0)),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
-            
-        return frame
+
+        return draw_frame
 
     def get_tile_from_piece(self, px, py, pw, ph):
         """
@@ -189,7 +204,7 @@ class BoardVision:
 
         offx = center_piece_x-self.x #replace
         offy = center_piece_y-self.y #replace
-        
+
         #Makes sure the detected object is not outside of the board! No need to touch this.
         if offx > self.w or offx < 0 or offy > self.h or offy < 0:
             return None
@@ -208,8 +223,8 @@ class BoardVision:
         #Returns tile index based on row and column
         tile_index = row * 3 + col
         return tile_index
-    
-    
+
+
     def update_board_state(self):
         """
         TODO: Step 2
@@ -222,7 +237,7 @@ class BoardVision:
         Loop through self.board_window, which includes the measurements for every tile.
         For each tile in self.board_window, if the value is less than -0.2, we detect a blue piece.
         For each tile in self.board_window, if the value is greater than 0.2, we detect a red piece.
-        
+
         Each item self.board_state should contain either None to indicate empty, "x", or "o".
 
         Update each item in self.board_state based on self.board_window!
@@ -272,13 +287,13 @@ class BoardVision:
             if old_board[i] != self.true_board_state[i]:
                 count+=1
                 changed_tile = i
-                new_piece = self.true_board_state[i] 
-            
+                new_piece = self.true_board_state[i]
+
         if count!=1:
             changed_tile = None
             new_piece = None
         return changed_tile, new_piece
-    
+
 
     def get_board(self):
         """
@@ -287,7 +302,7 @@ class BoardVision:
         while self.confidence < self.confidence_threshold:
             time.sleep(0.05)
         return self.true_board_state
-    
+
     def wait_for_move(self):
         """
         No changes needed!
@@ -298,7 +313,7 @@ class BoardVision:
             time.sleep(0.1)
         print("new board status detected!")
         return self.get_board()
-    
+
     def get_cap(self):
         return self.cap
 
@@ -329,8 +344,8 @@ class BoardVision:
             self.y = self.y * (1 - alpha) + y * alpha
             self.w = self.w * (1 - alpha) + w * alpha
             self.h = self.h * (1 - alpha) + h * alpha
-    
-    
+
+
     def cap_board_state(self):
         """
         Don't need to change anything here!
@@ -354,9 +369,11 @@ class BoardVision:
             if not ret:
                 break
 
-            if self.use_yolo:
-                self.frame_count += 1
-                annotated_frame = self.draw_model_predictions(frame)   # always called; internally decides whether to re-infer
+            # `frame` stays pristine and is only ever used for real detection
+            # (HSV conversion, contour finding, YOLO inference). All drawing
+            # for the on-screen preview happens on this separate copy instead,
+            # so overlays never leak into what the detectors actually see.
+            display_frame = frame.copy()
 
             if ret:
                 height, width = frame.shape[:2]
@@ -379,8 +396,8 @@ class BoardVision:
             red_mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
             red_mask = cv2.bitwise_or(red_mask1, red_mask2)
 
-            blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)   
-            blue_mask_close = cv2.inRange(hsv, lower_blue_close, upper_blue_close)     
+            blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)
+            blue_mask_close = cv2.inRange(hsv, lower_blue_close, upper_blue_close)
             green_mask = cv2.inRange(hsv, lower_green, upper_green)
 
             contours_green, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -402,7 +419,7 @@ class BoardVision:
                 y = y_min
 
                 if w > 50 and h > 50:
-                    cv2.rectangle(frame, (int(x), int(y)), (int(x + w), int(y + h)), (0, 255, 0), 2)
+                    cv2.rectangle(display_frame, (int(x), int(y)), (int(x + w), int(y + h)), (0, 255, 0), 2)
                     self.update_board_cam(x, y, w, h)
                     board_seen = True
 
@@ -418,36 +435,76 @@ class BoardVision:
                     if area > 800:
                         x, y, w, h = cv2.boundingRect(cnt)
                         if is_inside_board(x, y, w, h):
-                            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
+                            cv2.rectangle(display_frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
                             self.process_detected_piece(x, y, w, h, True)
 
+                frame_blue_pieces = []
                 contours_blue, _ = cv2.findContours(blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 for cnt in contours_blue:
                     area = cv2.contourArea(cnt)
                     if area > 800:
                         x, y, w, h = cv2.boundingRect(cnt)
                         if is_inside_board(x, y, w, h):
-                            cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+                            cv2.rectangle(display_frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
                             self.process_detected_piece(x, y, w, h, False)
+                            frame_blue_pieces.append((x, y, w, h))
+
+                self.blue_pieces = frame_blue_pieces
+
                 for n in range(len(self.board_window)):
                     self.board_window[n] = self.board_window[n]*0.9
                 self.update_board_state()
+
+            self.frame_count += 1
+
+            if self.use_yolo:
+                self.draw_model_predictions(frame, display_frame)   # always called; internally decides whether to re-infer
+            if self.grasp_model is not None:
+                grid = self._run_grasp_model(0, self.get_centermost_blue_piece())
+
+                if grid is not None:
+                    self.last_grid_spot = select_grasp_cell(grid, 0.5, True)
+                    #print(np.where(grid > 0.2, 1, 0))
+
             if self.main:
-                cv2.imshow("Camera View", annotated_frame)
+                cv2.imshow("Camera View", display_frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
                 if cv2.waitKey(1) & 0xFF == ord('c'):
                     self.print_handle_info()
                 if cv2.waitKey(1) & 0xFF == ord('b'):
                     print()
-                    
+
         cap.release()
         cv2.destroyAllWindows()
 
+    def _run_grasp_model(self, square_idx, bbox):
+        if self.frame_count % self.infer_every_n == 0:
+            if bbox is None:
+                return np.zeros((self.grasp_model.grid_size, self.grasp_model.grid_size))
+
+            square_onehot = F.one_hot(
+                torch.tensor(square_idx), num_classes=self.num_squares
+            ).float()
+
+            x, y, w, h = bbox
+            bbox_norm = torch.tensor([
+                x / self.img_w, y / self.img_h, w / self.img_w, h / self.img_h,
+            ], dtype=torch.float32)
+            bbox_missing = torch.tensor([0.0])
+
+            x_tensor = torch.cat([square_onehot, bbox_norm, bbox_missing]).unsqueeze(0)  # add batch dim
+
+            with torch.no_grad():
+                logits = self.grasp_model(x_tensor)
+                probs = torch.sigmoid(logits).squeeze(0)  # (grid_size, grid_size)
+
+            return probs.numpy()
+        return None
 
 if __name__ == "__main__":
     main=True
-    board = BoardVision(main=True, cam=4, use_yolo=False) #<- change the number around until you connect to the usb camera
+    board = BoardVision(main=True, cam=0, use_yolo=False, grasp_model_path='model.pt') #<- change the number around until you connect to the usb camera
 
     if not main:
         while True:
