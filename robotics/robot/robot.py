@@ -28,7 +28,7 @@ class Robot:
         self.min_position_limit = self._int_to_list(min_position_limit, len(servo_ids))
         self.position_p_gain = self._int_to_list(position_p_gain, len(servo_ids))
         self.position_i_gain = self._int_to_list(position_i_gain, len(servo_ids))
-        
+
         # Initialize motors
         self.dynamixel = Dynamixel.Config(baudrate=baudrate, device_name=device_name).instantiate()
         self._init_motors()
@@ -148,19 +148,53 @@ class Robot:
 
         self.pos_writer.txPacket()
     
-    def set_and_wait_goal_pos(self, action, threshold=1, servo_id=None):
+    def _try_sync_read(self, reader, attribute):
+        """
+        One sync read of `attribute` from all servos. Returns a numpy array, or None
+        if the packet failed -- unlike read_position/read_velocity, a failed read is
+        never turned into zeros or stale values.
+        """
+        if reader.txRxPacket() != 0:
+            return None
+        values = []
+        for id in self.servo_ids:
+            value = reader.getData(id, attribute, 4)
+            if value > 2 ** 31:
+                value -= 2 ** 32
+            values.append(value)
+        return np.array(values)
+
+    def set_and_wait_goal_pos(self, action, threshold=1, servo_id=None,
+                              pos_tolerance=20, min_time=0.5, timeout=10.0):
         """
         Sets the goal position and waits until the robot reaches the goal position.
+        A joint counts as done when it is within pos_tolerance ticks of its goal, or
+        (after min_time) has stopped moving -- e.g. the gripper blocked by a piece.
         :param action: list or numpy array of target joint positions in range [0, 4096]
-        :param threshold: threshold for the velocity to consider the robot has reached the goal position
+        :param threshold: threshold for the velocity to consider a joint stopped
         :param servo_id: servo id to set the goal position if controlling only one servo
+        :param pos_tolerance: ticks from the goal that count as reached
+        :param min_time: seconds before a stopped-but-not-reached joint counts as done
+        :param timeout: give up waiting after this many seconds
         """
         self.set_goal_pos(action, servo_id=servo_id)
-        while True:
-            time.sleep(0.1)
-            vel = self.read_velocity()
-            if np.all(np.abs(vel) <= threshold):
-                break
+        # Compare against what set_goal_pos actually sends (it clips to the limits)
+        goal = np.clip(action, self.min_position_limit, self.max_position_limit)
+        idx = slice(None) if servo_id is None else [self.servo_ids.index(servo_id)]
+
+        start = time.time()
+        while time.time() - start < timeout:
+            time.sleep(0.05)
+            pos = self._try_sync_read(self.position_reader, ReadAttribute.POSITION.value)
+            vel = self._try_sync_read(self.velocity_reader, ReadAttribute.VELOCITY.value)
+            if pos is None or vel is None:
+                continue  # failed read -- don't mistake it for "stopped"
+
+            reached = np.abs(pos - goal)[idx] <= pos_tolerance
+            stopped = np.abs(vel)[idx] <= threshold
+            if np.all(reached) or (time.time() - start > min_time and np.all(reached | stopped)):
+                return
+        print(f"set_and_wait_goal_pos: timed out after {timeout}s, goal {goal.astype(int).tolist()}")
 
     def set_pwm(self, action):
         """
