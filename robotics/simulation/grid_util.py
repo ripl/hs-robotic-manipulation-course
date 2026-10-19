@@ -46,3 +46,28 @@ def _weighted_centroid(probs, labeled, cluster_id):
     row_idx = int(np.clip(round(centroid_row), 0, grid_size - 1))
     col_idx = int(np.clip(round(centroid_col), 0, grid_size - 1))
     return (row_idx, col_idx)
+
+def select_grasp_bbox(boxes, img_w, img_h,
+                      min_area_frac=0.0035, max_area_frac=0.25,
+                      max_aspect=1.6, max_center_dist_frac=0.35):
+    """
+    Pick the blue blob most likely to be the piece under the gripper.
+    boxes: list of (x, y, w, h) in pixels. Returns one box or None.
+    Thresholds are fractions of the image, so sim (640x360) and real
+    (1920x1080) frames are filtered the same way.
+    """
+    img_area = img_w * img_h
+    cx, cy = img_w / 2, img_h / 2
+    max_dist = max_center_dist_frac * np.hypot(img_w, img_h)
+
+    best, best_dist = None, np.inf
+    for x, y, w, h in boxes:
+        area_frac = (w * h) / img_area
+        if not (min_area_frac <= area_frac <= max_area_frac):
+            continue  # specks and large background regions
+        if max(w, h) / max(min(w, h), 1) > max_aspect:
+            continue  # long thin blobs (edges, reflections) -- the piece is roughly square
+        dist = np.hypot(x + w / 2 - cx, y + h / 2 - cy)
+        if dist <= max_dist and dist < best_dist:
+            best, best_dist = (x, y, w, h), dist
+    return best

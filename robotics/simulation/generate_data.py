@@ -10,6 +10,7 @@ import time
 import tqdm
 from simulation.interface import SimulatedRobot
 from simulation.sim_vision import SimVision
+from simulation.grid_util import select_grasp_bbox
 
 FAIL_NONE = 0        # successful lift
 FAIL_NO_LIFT = 1     # unsuccessful lift
@@ -184,11 +185,7 @@ class DatasetGenerator:
             self.vision.wait_for_processed()
 
         pieces = self.vision.get_blue_piece_positions()
-        if not pieces:
-            return None
-
-        cx, cy = self.img_size[0] / 2, self.img_size[1] / 2
-        return min(pieces, key=lambda p: np.linalg.norm([cx - p[0], cy - p[1]]))
+        return select_grasp_bbox(pieces, *self.img_size)
 
     def render_image(self, camera_name='gripper_cam'):
         """Renders an image from the wrist camera."""

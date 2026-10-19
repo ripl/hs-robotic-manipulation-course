@@ -4,7 +4,7 @@ import threading
 import time
 import torch
 import torch.nn.functional as F
-from simulation.grid_util import select_grasp_cell
+from simulation.grid_util import select_grasp_cell, select_grasp_bbox
 from simulation.train_precision_mlp import GraspMLP
 from ultralytics import YOLO
 
@@ -30,6 +30,7 @@ class BoardVision:
         self.cap = cv2.VideoCapture(cam) #Tune this number until you get the USB camera!
 
         self.blue_pieces = []
+        self.grasp_candidates = []  # all blue blobs in the latest frame, board or not
 
         self.grasp_model = None
         if grasp_model_path is not None:
@@ -50,8 +51,10 @@ class BoardVision:
 
         if grasp_model_path is not None or use_yolo:
             self.last_grid_spot = None
-            self.frame_count = 0
-            self.infer_every_n = 3
+
+        # cap_board_state() increments this every frame, so it must always exist
+        self.frame_count = 0
+        self.infer_every_n = 3
 
         if main:
             self.cap_board_state()
@@ -147,12 +150,9 @@ class BoardVision:
         self.confidence = self.confidence_threshold
 
     def get_centermost_blue_piece(self):
-        """Returns (x, y, w, h) of the blue piece closest to the image center, or None."""
-        pieces = list(self.blue_pieces)
-        if not pieces:
-            return None
-        cx, cy = self.img_w / 2, self.img_h / 2
-        return min(pieces, key=lambda p: ((p[0] - cx) ** 2 + (p[1] - cy) ** 2) ** 0.5)
+        """Returns (x, y, w, h) of the blue piece the gripper should grasp, or None.
+        Uses the same filter as generate_data.py so real and training bboxes match."""
+        return select_grasp_bbox(list(self.grasp_candidates), self.img_w, self.img_h)
 
     def draw_model_predictions(self, infer_frame, draw_frame):
         """
@@ -400,6 +400,13 @@ class BoardVision:
             blue_mask_close = cv2.inRange(hsv, lower_blue_close, upper_blue_close)
             green_mask = cv2.inRange(hsv, lower_green, upper_green)
 
+            if self.grasp_model is not None:
+                # Grasp candidates don't depend on seeing the board -- the gripper camera
+                # is often too close to see it. select_grasp_bbox() rejects distractors.
+                self.img_h, self.img_w = frame.shape[:2]
+                contours_grasp, _ = cv2.findContours(blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                self.grasp_candidates = [cv2.boundingRect(cnt) for cnt in contours_grasp]
+
             contours_green, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             valid_green = [cnt for cnt in contours_green if cv2.contourArea(cnt) > 100]
             if valid_green:
@@ -460,10 +467,14 @@ class BoardVision:
             if self.use_yolo:
                 self.draw_model_predictions(frame, display_frame)   # always called; internally decides whether to re-infer
             if self.grasp_model is not None:
-                grid = self._run_grasp_model(0, self.get_centermost_blue_piece())
-
-                if grid is not None:
-                    self.last_grid_spot = select_grasp_cell(grid, 0.5, True)
+                bbox = self.get_centermost_blue_piece()
+                if bbox is None:
+                    # No piece in view -- an all-zeros grid would fall back to corner cell (0, 0)
+                    self.last_grid_spot = None
+                else:
+                    grid = self._run_grasp_model(0, bbox)
+                    if grid is not None:
+                        self.last_grid_spot = select_grasp_cell(grid, 0.5, True)
                     #print(np.where(grid > 0.2, 1, 0))
 
             if self.main:

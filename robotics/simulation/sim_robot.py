@@ -12,10 +12,12 @@ class SimRobot(Arm):
                  positions_path='../actions.json',
                  model_path='model.pt',
                  vision=None,
+                 confirm=False,
                 ) -> None:
         super().__init__(piece=piece, config_path=config_path, positions_path=positions_path)
 
         self.vision = vision
+        self.confirm = confirm  # wait for Enter before each IK move on the real arm
 
         # MuJoCo model used ONLY for kinematics -- never stepped as a physics sim
         self.m = mujoco.MjModel.from_xml_path(model_path)
@@ -46,12 +48,18 @@ class SimRobot(Arm):
         mujoco.mj_forward(self.m, self.d)  # kinematics only -- no mj_step, no physics
         return q_real
 
-    def get_best_spot(self):
+    def get_best_spot(self, timeout=5.0):
         if self.vision is None:
             return (3, 3)
-        else:
-            print(self.vision.last_grid_spot)
-            return self.vision.last_grid_spot
+
+        deadline = time.time() + timeout
+        while self.vision.last_grid_spot is None and time.time() < deadline:
+            time.sleep(0.05)
+        spot = self.vision.last_grid_spot
+        if spot is None:
+            raise RuntimeError("Grasp model produced no grid spot -- is a blue piece in view?")
+        print("grid spot:", spot)
+        return spot
 
     def move_piece_precise(self, start, end):
         """
@@ -71,7 +79,11 @@ class SimRobot(Arm):
         self.arm.set_and_wait_goal_pos(self.positions[start]['hover'])
         time.sleep(2.0)
 
-        self.attempt_grasp_real()
+        # Drop any spot computed while the arm was still moving; get_best_spot()
+        # waits for one from the hover view
+        self.vision.last_grid_spot = None
+
+        self.attempt_grasp_real(start)
 
         self.arm.set_and_wait_goal_pos(self.arm_config['home_pos'])
 
@@ -232,14 +244,18 @@ class SimRobot(Arm):
 
         return target_xy
 
-    def attempt_grasp_real(self, grasp_height=0.02, lift_height=0.08):
+    def attempt_grasp_real(self, start, grasp_height=0.02):
+        """
+        Grasp the piece under the arm (which must be at positions[start]['hover']),
+        then lift by returning to that recorded hover pose with the gripper closed.
+        """
         time.sleep(1.0)
         target_xy = self.get_target_xy(grid_size=7, grid_spacing=0.005, threshold=0.5)
 
         grasp_target = np.array([target_xy[0], target_xy[1], 0.02])  # grasp_height=0.02
         print("grasp_target:", grasp_target)
 
-        q_grasp = self.ik_new(grasp_target, max_iters=100)
+        q_grasp = self.ik_new(grasp_target, max_iters=500)
         print("IK solution (sim-space):", q_grasp)
         print("delta from current pose:", q_grasp[:6] - self.d.qpos[:6])
 
@@ -252,17 +268,59 @@ class SimRobot(Arm):
 
         grasp_target = np.array([target_xy[0], target_xy[1], grasp_height])
 
-        q = self.ik_new(grasp_target, max_iters=100, damping=1e-2)
+        q = self.ik_new(grasp_target, max_iters=500, damping=1e-2)
         q[5] = -1  # open
-        self.move_to_target_smooth_real(q, dt=0.02)
+        self.move_checked(q, grasp_target, "descend to grasp (gripper open)")
         time.sleep(0.3)  # let servos settle -- no mj_step equivalent, just wait
 
         q[5] = 0.1  # close (careful: check real ctrlrange/servo limits match sim, per earlier bug)
-        self.move_to_target_smooth_real(q, dt=0.02)
+        self.move_checked(q, grasp_target, "close gripper")
         time.sleep(0.3)
 
-        lift_target = grasp_target + np.array([0, 0, lift_height])
-        q = self.ik_new(lift_target, max_iters=100, damping=1e-2)
-        q[5] = 0.1
-        self.move_to_target_smooth_real(q, dt=0.02)
+        # Lift by going back to the recorded hover pose: it's known to be reachable,
+        # unlike an IK target straight above the grasp (8 cm up hit joint limits / failed to converge).
+        # Keep the gripper at the same closed command so the piece isn't dropped.
+        lift_pose = list(self.positions[start]['hover'])
+        lift_pose[5] = int(self.sim_to_real(q[:6])[5])
+        if self.confirm:
+            print(f"\n[lift to '{start}' hover] goal ticks: {lift_pose}")
+            input("  Press Enter to move (Ctrl+C to abort)... ")
+        self.arm.set_and_wait_goal_pos(lift_pose)
         time.sleep(0.3)
+
+    def move_checked(self, q_sim, ee_target_pos, label, pos_tol=0.005, site_name='ee_site'):
+        """
+        Check an IK solution before sending it to the real arm, then move.
+        Refuses if the solved end-effector is more than pos_tol (m) from the target,
+        or if an arm joint is outside the servo limits (set_goal_pos would silently clip it).
+        With self.confirm, prints the move and waits for Enter.
+        """
+        # Forward kinematics on the solution, without disturbing the synced model state
+        qpos0 = self.d.qpos.copy()
+        self.d.qpos[:6] = q_sim[:6]
+        mujoco.mj_kinematics(self.m, self.d)
+        ee_pos = self.d.site_xpos[self.m.site(site_name).id].copy()
+        self.d.qpos[:] = qpos0
+        mujoco.mj_forward(self.m, self.d)
+
+        pos_err = np.linalg.norm(ee_pos - ee_target_pos)
+        if pos_err > pos_tol:
+            raise RuntimeError(f"[{label}] IK did not converge: {pos_err * 1000:.1f} mm from target {ee_target_pos}")
+
+        q_real = self.sim_to_real(q_sim[:6]).astype(int)
+        # Joint 5 (gripper) is left out: closing past the limit on purpose is how it grips
+        lo = np.array(self.arm.min_position_limit[:5])
+        hi = np.array(self.arm.max_position_limit[:5])
+        out = np.where((q_real[:5] < lo) | (q_real[:5] > hi))[0]
+        if out.size:
+            raise RuntimeError(f"[{label}] joints {out.tolist()} outside servo limits: "
+                               f"ticks {q_real[:5].tolist()}, min {lo.tolist()}, max {hi.tolist()}")
+
+        if self.confirm:
+            q_now = self.arm.read_position()
+            print(f"\n[{label}] target {np.round(ee_target_pos, 4)}, IK error {pos_err * 1000:.1f} mm")
+            print("  goal ticks:", q_real.tolist())
+            print("  tick delta:", (q_real - q_now).tolist())
+            input("  Press Enter to move (Ctrl+C to abort)... ")
+
+        self.move_to_target_smooth_real(q_sim, dt=0.02)
