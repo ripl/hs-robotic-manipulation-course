@@ -15,8 +15,19 @@ from simulation.grid_util import select_grasp_bbox, GRASP_YAW, GRIPPER_OPEN_SIM
 FAIL_NONE = 0        # successful lift
 FAIL_NO_LIFT = 1     # unsuccessful lift
 FAIL_PUSHED = 2       # pushed piece into board
-FAIL_CONTACT = 3      # unwanted contact with obstacle
+FAIL_CONTACT = 3      # unwanted contact with obstacle, or an obstacle was moved
+FAIL_SLIP = 4         # lifted, but the piece slid in or fell out of the claw while held
 SKIPPED = -1          # never attempted (outside max_grasp_radius)
+
+FAIL_NAMES = {FAIL_NONE: 'SUCCESS', FAIL_NO_LIFT: 'NO_LIFT', FAIL_PUSHED: 'PUSHED',
+              FAIL_CONTACT: 'CONTACT', FAIL_SLIP: 'SLIP'}
+
+class _TrialFailed(Exception):
+    """Raised from inside a physics step to end a grasp attempt early."""
+    def __init__(self, reason, detail):
+        super().__init__(detail)
+        self.reason = reason
+        self.detail = detail
 
 class DatasetGenerator:
     def __init__(self, model_path, output_dir='dataset',
@@ -38,6 +49,20 @@ class DatasetGenerator:
             'camera_retrofit', 'cs_mount',
             'gripper-moving-part-dumb_v2_1',
         ]
+
+        # Everything that counts as "the robot" for contact checks: the base and every link below it
+        base_id = self.m.body('base_link').id
+        self.arm_body_ids = {b for b in range(self.m.nbody)
+                             if b == base_id or self._is_descendant(b, base_id)}
+        self.target_piece_id = self.m.body('o_piece').id
+        # Body masks for the vectorised per-step contact check
+        self._distractor_ids = np.array(sorted(self.distractor_body_ids))
+        self._is_distractor = np.zeros(self.m.nbody, dtype=bool)
+        self._is_distractor[self._distractor_ids] = True
+        self._is_robot_or_target = np.zeros(self.m.nbody, dtype=bool)
+        self._is_robot_or_target[list(self.arm_body_ids) + [self.target_piece_id]] = True
+        self.finger_pad_geom_ids = {self.m.geom('static_finger_pad').id, self.m.geom('moving_finger_pad').id}
+        self._trial_monitor = None  # per-step check, set only while a grasp attempt runs
 
         self.cam_id = self.m.camera('gripper_cam').id
         self.site_id = self.m.site('ee_site').id
@@ -132,6 +157,7 @@ class DatasetGenerator:
                     'no_lift': int((fail_reasons == FAIL_NO_LIFT).sum()),
                     'pushed': int((fail_reasons == FAIL_PUSHED).sum()),
                     'contact': int((fail_reasons == FAIL_CONTACT).sum()),
+                    'slip': int((fail_reasons == FAIL_SLIP).sum()),
                     'success': int((fail_reasons == FAIL_NONE).sum()),
                 },
             }
@@ -221,81 +247,125 @@ class DatasetGenerator:
                 if dist_from_piece > self.max_grasp_radius:
                     continue
 
-                success, reason = self.attempt_grasp(target_xy, piece_pos, grasp_height=self.grasp_height)
+                success, reason, detail = self.attempt_grasp(target_xy, piece_pos, grasp_height=self.grasp_height)
                 labels[i, j] = int(success)
                 fail_reasons[i, j] = reason
+                if self.debug_viewer:
+                    print(f"  cell ({i},{j}) offset ({dx*1000:+.0f}, {dy*1000:+.0f}) mm: "
+                          f"{FAIL_NAMES[reason]:8} {detail}")
 
         return labels, fail_reasons
 
-    def attempt_grasp(self, target_xy, piece_pos, grasp_height=0.02, n_settle_steps=100) -> tuple[bool, int]:
+    def attempt_grasp(self, target_xy, piece_pos, grasp_height=0.02, hold_steps=600,
+                      slip_tol=0.004, distractor_move_tol=0.0015,
+                      distractor_rot_tol=np.radians(5)) -> tuple[bool, int, str]:
         """
-        Move to target_xy (at grasp_height), close gripper, lift slightly,
-        check if piece moved with the gripper (success) or stayed/dropped (fail).
+        Move to target_xy (at grasp_height), close gripper, lift, then hold.
+        Returns (success, reason, detail). Fails as soon as the arm or the target piece
+        touches a distractor, or any distractor moves (checked every physics step).
+        Success needs the piece to stay put in the claw for the whole hold, not just
+        be above the board at one instant.
         """
         qpos_snapshot = self.d.qpos.copy()
         qvel_snapshot = self.d.qvel.copy()
+        ctrl_snapshot = self.d.ctrl.copy()
 
-        def finish(success: bool, reason: int):
+        def finish(success: bool, reason: int, detail: str = ''):
+            self._trial_monitor = None
             self.d.qpos[:] = qpos_snapshot
             self.d.qvel[:] = qvel_snapshot
+            self.d.ctrl[:] = ctrl_snapshot
             mujoco.mj_forward(self.m, self.d)
-            return success, reason
+            return success, reason, detail
 
         hover_target = np.array([target_xy[0], target_xy[1], 0.05])
         grasp_target = np.array([target_xy[0], target_xy[1], grasp_height])
         original_piece_pos = piece_pos.copy()
-        target_piece_body_id = self.m.body('o_piece').id
 
-        # Move Laterally
-        q = self._ik(hover_target, max_iters=500, damping=1e-2)
-        q[5] = GRIPPER_OPEN_SIM
-        self.move_to_target_smooth(q)
-        self._settle_until_reached(q, max_steps=1000, pos_tol=0.025, vel_thresh=5e-3)
+        distractor_start = (self.d.xpos[self._distractor_ids].copy(), self.d.xquat[self._distractor_ids].copy())
+        self._trial_monitor = lambda: self._check_distractors(distractor_start,
+                                                              distractor_move_tol, distractor_rot_tol)
+        try:
+            # Move Laterally
+            q = self._ik(hover_target, max_iters=500, damping=1e-2)
+            q[5] = GRIPPER_OPEN_SIM
+            self.move_to_target_smooth(q)
+            self._settle_until_reached(q, max_steps=1000, pos_tol=0.025, vel_thresh=5e-3)
 
-        # Descend with Dampening
-        q = self._ik(grasp_target, max_iters=500, damping=1e-2)
-        self.move_to_target_smooth(q)
-        self._settle_until_reached(q, max_steps=1000, pos_tol=0.025, vel_thresh=5e-3)
+            # Descend with Dampening
+            q = self._ik(grasp_target, max_iters=500, damping=1e-2)
+            self.move_to_target_smooth(q)
+            self._settle_until_reached(q, max_steps=1000, pos_tol=0.025, vel_thresh=5e-3)
 
-        if self.check_pushed_into_board('o_piece', original_piece_pos, n_check_steps=30):
-            return finish(False, FAIL_PUSHED)
-        if self.check_unwanted_contact(target_piece_body_id):
-            return finish(False, FAIL_CONTACT)
+            if self.check_pushed_into_board('o_piece', original_piece_pos, n_check_steps=30):
+                return finish(False, FAIL_PUSHED, 'piece shoved along the board on descent')
 
-        # Close Gripper
-        self.close_gripper(closed_value=0.1, n_steps=500)
-        if self.check_unwanted_contact(target_piece_body_id):
-            return finish(False, FAIL_CONTACT)
+            # Close Gripper
+            self.close_gripper(closed_value=0.1, n_steps=500)
 
-        # Lift with Dampening
-        lift_target = grasp_target + np.array([0, 0, self.lift_height])
-        q = self._ik(lift_target, max_iters=500, damping=1e-2)
-        q[5] = 0.1
-        self.move_to_target_smooth(q)
-        self._settle(n_settle_steps)
+            # Lift with Dampening
+            lift_target = grasp_target + np.array([0, 0, self.lift_height])
+            q = self._ik(lift_target, max_iters=500, damping=1e-2)
+            q[5] = 0.1
+            self.move_to_target_smooth(q)
 
-        piece_final_pos = self.d.body('o_piece').xpos.copy()
-        lifted = piece_final_pos[2] > (piece_pos[2] + 0.03)
-        if not lifted:
-            return finish(False, FAIL_NO_LIFT)
-        else:
-            return finish(True, FAIL_NONE)
+            piece_z = self.d.xpos[self.target_piece_id][2]
+            if piece_z < piece_pos[2] + 0.03:
+                return finish(False, FAIL_NO_LIFT, f'piece only {(piece_z - piece_pos[2]) * 1000:.0f} mm up after lift')
 
-    def check_unwanted_contact(self, target_piece_body_id):
-        """Returns true if the arm contacts any of the obstacle pieces."""
+            # Hold: the piece must stay at the same height relative to the claw
+            rel_start = piece_z - self.d.site_xpos[self.site_id][2]
+            for step in range(hold_steps):
+                self._step()
+                rel = self.d.xpos[self.target_piece_id][2] - self.d.site_xpos[self.site_id][2]
+                if abs(rel - rel_start) > slip_tol:
+                    return finish(False, FAIL_SLIP,
+                                  f'slid {abs(rel - rel_start) * 1000:.1f} mm in the claw after {step} hold steps')
+            touching = self._finger_pads_touching_piece()
+            if len(touching) < 2:
+                return finish(False, FAIL_SLIP, f'held by {len(touching)} finger pad(s) at end of hold')
+
+            return finish(True, FAIL_NONE, f'held steady for {hold_steps} steps')
+        except _TrialFailed as e:
+            return finish(False, e.reason, e.detail)
+
+    def _check_distractors(self, start, move_tol, rot_tol):
+        """Per-step trial monitor: fail if the robot or target piece touches a distractor,
+        or if any distractor has moved since the attempt started. Vectorised -- it runs every step."""
+        ncon = self.d.ncon
+        if ncon:
+            bodies = self.m.geom_bodyid[self.d.contact.geom[:ncon]]          # (ncon, 2)
+            dist, robot = self._is_distractor[bodies], self._is_robot_or_target[bodies]
+            hits = (dist[:, 0] & robot[:, 1]) | (dist[:, 1] & robot[:, 0])
+            if hits.any():
+                b1, b2 = bodies[np.argmax(hits)]
+                hit, other = (b1, b2) if self._is_distractor[b1] else (b2, b1)
+                who = 'target piece' if other == self.target_piece_id else self.m.body(other).name
+                raise _TrialFailed(FAIL_CONTACT, f'{who} touched {self.m.body(hit).name}')
+
+        pos0, quat0 = start
+        moved = np.linalg.norm(self.d.xpos[self._distractor_ids] - pos0, axis=1)
+        angle = 2 * np.arccos(np.clip(np.abs(np.sum(self.d.xquat[self._distractor_ids] * quat0, axis=1)), 0.0, 1.0))
+        bad = (moved > move_tol) | (angle > rot_tol)
+        if bad.any():
+            k = np.argmax(bad)
+            raise _TrialFailed(FAIL_CONTACT, f'{self.m.body(self._distractor_ids[k]).name} moved '
+                                             f'{moved[k] * 1000:.1f} mm / {np.degrees(angle[k]):.1f} deg')
+
+    def _finger_pads_touching_piece(self):
+        """Finger pad geoms currently in contact with the target piece."""
+        touching = set()
         for i in range(self.d.ncon):
-            contact = self.d.contact[i]
-            geom1_name = self.m.geom(contact.geom1).name
-            geom2_name = self.m.geom(contact.geom2).name
-            geom1_body = self.m.geom_bodyid[contact.geom1]
-            geom2_body = self.m.geom_bodyid[contact.geom2]
+            c = self.d.contact[i]
+            for pad, other in ((c.geom1, c.geom2), (c.geom2, c.geom1)):
+                if pad in self.finger_pad_geom_ids and self.m.geom_bodyid[other] == self.target_piece_id:
+                    touching.add(pad)
+        return touching
 
-            is_gripper_involved = geom1_name in self.gripper_geom_names or geom2_name in self.gripper_geom_names
-            if not is_gripper_involved:
-                continue
-
-            other_body = geom2_body if geom1_name in self.gripper_geom_names else geom1_body
-            if other_body != target_piece_body_id and other_body != 0:
+    def _is_descendant(self, body, ancestor):
+        while body != 0:
+            body = self.m.body_parentid[body]
+            if body == ancestor:
                 return True
         return False
 
@@ -309,8 +379,7 @@ class DatasetGenerator:
         """
         displaced_count = 0
         for _ in range(n_check_steps):
-            mujoco.mj_step(self.m, self.d)
-            self._viewer_sync()
+            self._step()
 
             current_pos = self.d.body(piece_body_id).xpos.copy()
             planar_disp = np.linalg.norm(current_pos[:2] - original_pos[:2])
@@ -346,8 +415,7 @@ class DatasetGenerator:
             q_interp = q_start[:n] + alpha_smooth * (q_target[:n] - q_start[:n])
 
             self.robot.set_target_pos(q_interp)
-            mujoco.mj_step(self.m, self.d)
-            self._viewer_sync()
+            self._step()
 
     def close_gripper(self, closed_value=0.1, n_steps=200, vel_thresh=1e-3):
         """
@@ -360,8 +428,7 @@ class DatasetGenerator:
             alpha_smooth = 3 * alpha**2 - 2 * alpha**3
             current_ctrl[5] = start_val + alpha_smooth * (closed_value - start_val)
             self.d.ctrl[:] = current_ctrl
-            mujoco.mj_step(self.m, self.d)
-            self._viewer_sync()
+            self._step()
             if np.linalg.norm(self.d.qvel) < vel_thresh:
                 break
 
@@ -382,8 +449,7 @@ class DatasetGenerator:
         """Waits until the norm of joint all velocities is below vel_thresh. """
         for _ in range(max_steps):
             step_start = time.time()
-            mujoco.mj_step(self.m, self.d)
-            self._viewer_sync()
+            self._step()
             if self.debug_viewer:
                 time_until_next = self.m.opt.timestep - (time.time() - step_start)
                 if time_until_next > 0:
@@ -396,16 +462,24 @@ class DatasetGenerator:
         n = len(q_target[:6])
 
         for i in range(max_steps):
-            mujoco.mj_step(self.m, self.d)
-            self._viewer_sync()
+            self._step()
 
             pos_err = np.abs(self.robot.read_position()[:n] - q_target[:n])
             vel_ok = np.linalg.norm(self.d.qvel) < vel_thresh
             pos_ok = np.all(pos_err < pos_tol)
             if vel_ok and pos_ok:
                 return
-        print(f"TIMEOUT after {max_steps} steps. pos_err={pos_err}, "
-            f"qvel_norm={np.linalg.norm(self.d.qvel):.5f}")
+
+        if self.debug_viewer:
+            print(f"TIMEOUT after {max_steps} steps. pos_err={pos_err}, "
+                f"qvel_norm={np.linalg.norm(self.d.qvel):.5f}")
+
+    def _step(self):
+        """One physics step. During a grasp attempt, the trial monitor runs after every step."""
+        mujoco.mj_step(self.m, self.d)
+        if self._trial_monitor is not None:
+            self._trial_monitor()
+        self._viewer_sync()
 
     def _viewer_sync(self):
         if self.viewer is not None and self.viewer.is_running():
