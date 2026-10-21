@@ -16,6 +16,7 @@ Vision-guided grasping for the real 6-DOF arm. A small MLP trained on MuJoCo dat
 - Each label also records `img_size`, which training uses to scale the bbox (sim renders 640×360).
 
 ### 2. Train (`train_precision_mlp.py`)
+- `run_training.sh` wraps both stages. It sets `MUJOCO_GL` (default `egl`), `PYTHONPATH` and `OMP_NUM_THREADS=1`, can generate data in parallel shards (`--generate N --shards K`), then trains with hyperparameters passed as flags (`--lr`, `--batch-size`, `--epochs`, …). Run `./run_training.sh --help` for the full list. Every training hyperparameter is also a `train_precision_mlp.py` argument, and each one defaults to the value the script used before it took arguments. If you change `--hidden_dim`, update `GraspMLP(...)` in `vision.py` to match.
 - `GraspDataset` reads `dataset/labels/*.json`. Samples with no detected bbox are skipped, because `vision.py` doesn't run the model without one. Each sample's input is 14 values: a one-hot of the square index (9) + the bounding box `(x, y, w, h)` divided by image width/height (4) + a "bbox missing" flag (1).
 - `GraspMLP(grid_size=7)`: 14 → 256 → 256 → 49 logits, reshaped to 7×7. Trained with `BCEWithLogitsLoss` and AdamW, with early stopping.
 - Checkpoints are saved to `models/model_<timestamp>_<epoch>.pt`, relative to the folder you run it from. The model actually used is copied to `robotics/model.pt`.
