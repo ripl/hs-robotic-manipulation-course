@@ -3,7 +3,6 @@ import cv2
 import numpy as np
 import threading
 import time
-from ultralytics import YOLO
 
 class SimVision:
     """
@@ -52,6 +51,7 @@ class SimVision:
         if use_yolo:
             self.frame_count = 0
             self.last_predictions = []
+            from ultralytics import YOLO  # lazy: importing ultralytics loads torch (~450 MB per process)
             self.model = YOLO(weights_path)
             self.infer_every_n = 3
             self.last_predictions_clean = []
